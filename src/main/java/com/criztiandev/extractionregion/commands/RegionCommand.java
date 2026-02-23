@@ -42,6 +42,7 @@ public class RegionCommand implements CommandExecutor {
             player.sendMessage("§7/re create <id> §f- Create a region from your selection.");
             player.sendMessage("§7/re delete <id> §f- Delete an existing region.");
             player.sendMessage("§7/re list §f- Open the region management GUI.");
+            player.sendMessage("§7/re spawn <id> §f- Force spread chests in a region.");
             return true;
         }
 
@@ -115,6 +116,24 @@ public class RegionCommand implements CommandExecutor {
 
         if (args[0].equalsIgnoreCase("list")) {
             new RegionListGUI(plugin).openMenu(player, 0);
+            return true;
+        }
+
+        if (args[0].equalsIgnoreCase("spawn")) {
+            if (args.length < 2) {
+                player.sendMessage("§cUsage: /re spawn <id>");
+                return true;
+            }
+
+            String id = args[1];
+            SavedRegion region = plugin.getRegionManager().getRegion(id);
+            if (region == null) {
+                player.sendMessage("§cRegion not found.");
+                return true;
+            }
+
+            int spawned = plugin.getRegionManager().runAutoSpawns(region);
+            player.sendMessage("§aForced auto-spawn for region §e" + id + "§a. Scattered §e" + spawned + " §achests.");
             return true;
         }
 
