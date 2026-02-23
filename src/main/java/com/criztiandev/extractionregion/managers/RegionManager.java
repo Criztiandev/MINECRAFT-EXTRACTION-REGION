@@ -1,8 +1,8 @@
-package com.criztiandev.extractionchest.managers;
+﻿package com.criztiandev.extractionregion.managers;
 
-import com.criztiandev.extractionchest.ExtractionChestPlugin;
-import com.criztiandev.extractionchest.models.RegionSelection;
-import com.criztiandev.extractionchest.models.SavedRegion;
+import com.criztiandev.extractionregion.ExtractionRegionPlugin;
+import com.criztiandev.extractionregion.models.RegionSelection;
+import com.criztiandev.extractionregion.models.SavedRegion;
 
 import java.util.Collection;
 import java.util.HashMap;
@@ -12,11 +12,11 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class RegionManager {
 
-    private final ExtractionChestPlugin plugin;
+    private final ExtractionRegionPlugin plugin;
     private final Map<UUID, RegionSelection> selections = new HashMap<>();
     private final Map<String, SavedRegion> regions = new ConcurrentHashMap<>();
 
-    public RegionManager(ExtractionChestPlugin plugin) {
+    public RegionManager(ExtractionRegionPlugin plugin) {
         this.plugin = plugin;
     }
 
@@ -92,3 +92,4 @@ public class RegionManager {
         selections.remove(uuid);
     }
 }
+

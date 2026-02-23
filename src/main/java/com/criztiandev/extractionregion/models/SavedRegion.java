@@ -1,4 +1,4 @@
-package com.criztiandev.extractionchest.models;
+﻿package com.criztiandev.extractionregion.models;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -70,3 +70,4 @@ public class SavedRegion {
         return selection;
     }
 }
+

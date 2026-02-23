@@ -1,7 +1,7 @@
-package com.criztiandev.extractionchest.gui;
+﻿package com.criztiandev.extractionregion.gui;
 
-import com.criztiandev.extractionchest.ExtractionChestPlugin;
-import com.criztiandev.extractionchest.models.SavedRegion;
+import com.criztiandev.extractionregion.ExtractionRegionPlugin;
+import com.criztiandev.extractionregion.models.SavedRegion;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
@@ -16,10 +16,10 @@ import java.util.List;
 
 public class RegionListGUI {
 
-    private final ExtractionChestPlugin plugin;
+    private final ExtractionRegionPlugin plugin;
     public static final String TITLE = "§8Select a Region...";
 
-    public RegionListGUI(ExtractionChestPlugin plugin) {
+    public RegionListGUI(ExtractionRegionPlugin plugin) {
         this.plugin = plugin;
     }
 
@@ -87,3 +87,4 @@ public class RegionListGUI {
         player.openInventory(inv);
     }
 }
+

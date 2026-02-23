@@ -1,8 +1,8 @@
-package com.criztiandev.extractionchest.gui;
+﻿package com.criztiandev.extractionregion.gui;
 
-import com.criztiandev.extractionchest.ExtractionChestPlugin;
+import com.criztiandev.extractionregion.ExtractionRegionPlugin;
 import com.criztiandev.extractionchest.models.ParentChestDefinition;
-import com.criztiandev.extractionchest.models.SavedRegion;
+import com.criztiandev.extractionregion.models.SavedRegion;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
@@ -18,15 +18,15 @@ import java.util.List;
 
 public class RegionAutoSpawnGUI {
 
-    private final ExtractionChestPlugin plugin;
+    private final ExtractionRegionPlugin plugin;
 
-    public RegionAutoSpawnGUI(ExtractionChestPlugin plugin) {
+    public RegionAutoSpawnGUI(ExtractionRegionPlugin plugin) {
         this.plugin = plugin;
     }
 
     public void openMenu(Player player, SavedRegion region) {
         FileConfiguration config = plugin.getConfig();
-        String title = config.getString("region-gui.title", "§8▶ §dConfigure Auto Spawns").replace("&", "§");
+        String title = config.getString("region-gui.title", "§8â–¶ §dConfigure Auto Spawns").replace("&", "§");
         int size = config.getInt("region-gui.size", 54);
         Inventory inv = Bukkit.createInventory(null, size, title);
 
@@ -91,3 +91,4 @@ public class RegionAutoSpawnGUI {
         return item;
     }
 }
+

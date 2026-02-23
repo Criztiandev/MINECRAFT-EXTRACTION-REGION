@@ -1,7 +1,7 @@
-package com.criztiandev.extractionchest.listeners;
+﻿package com.criztiandev.extractionregion.listeners;
 
-import com.criztiandev.extractionchest.ExtractionChestPlugin;
-import com.criztiandev.extractionchest.models.RegionSelection;
+import com.criztiandev.extractionregion.ExtractionRegionPlugin;
+import com.criztiandev.extractionregion.models.RegionSelection;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.block.Block;
@@ -16,9 +16,9 @@ import org.bukkit.persistence.PersistentDataType;
 
 public class RegionWandListener implements Listener {
 
-    private final ExtractionChestPlugin plugin;
+    private final ExtractionRegionPlugin plugin;
 
-    public RegionWandListener(ExtractionChestPlugin plugin) {
+    public RegionWandListener(ExtractionRegionPlugin plugin) {
         this.plugin = plugin;
     }
 
@@ -56,3 +56,4 @@ public class RegionWandListener implements Listener {
         }
     }
 }
+

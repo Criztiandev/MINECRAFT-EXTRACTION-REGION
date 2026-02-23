@@ -1,4 +1,4 @@
-package com.criztiandev.extractionregion;
+﻿package com.criztiandev.extractionregion;
 
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -15,3 +15,4 @@ public class ExtractionRegionPlugin extends JavaPlugin {
         getLogger().info("ExtractionRegionEditor has been disabled!");
     }
 }
+

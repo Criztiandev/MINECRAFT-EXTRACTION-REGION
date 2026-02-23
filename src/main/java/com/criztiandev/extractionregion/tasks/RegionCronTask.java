@@ -1,14 +1,14 @@
-package com.criztiandev.extractionchest.tasks;
+﻿package com.criztiandev.extractionregion.tasks;
 
-import com.criztiandev.extractionchest.ExtractionChestPlugin;
-import com.criztiandev.extractionchest.models.SavedRegion;
+import com.criztiandev.extractionregion.ExtractionRegionPlugin;
+import com.criztiandev.extractionregion.models.SavedRegion;
 import org.bukkit.scheduler.BukkitRunnable;
 
 public class RegionCronTask extends BukkitRunnable {
 
-    private final ExtractionChestPlugin plugin;
+    private final ExtractionRegionPlugin plugin;
 
-    public RegionCronTask(ExtractionChestPlugin plugin) {
+    public RegionCronTask(ExtractionRegionPlugin plugin) {
         this.plugin = plugin;
     }
 
@@ -37,3 +37,4 @@ public class RegionCronTask extends BukkitRunnable {
         }
     }
 }
+

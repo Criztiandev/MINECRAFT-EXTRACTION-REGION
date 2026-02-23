@@ -1,4 +1,4 @@
-package com.criztiandev.extractionchest.models;
+﻿package com.criztiandev.extractionregion.models;
 
 import org.bukkit.Location;
 
@@ -46,3 +46,4 @@ public class RegionSelection {
         return pos1.getWorld().getName();
     }
 }
+
