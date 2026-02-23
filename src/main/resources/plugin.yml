@@ -1,0 +1,14 @@
+name: ExtractionRegionEditor
+version: "${project.version}"
+main: com.criztiandev.extractionregion.ExtractionRegionPlugin
+api-version: "1.21"
+author: criztiandev
+description: Advanced region and timer management for ExtractionChest.
+depend: [ExtractionChest]
+website: https://github.com/criztiandev/extraction-region-editor
+
+commands:
+  regioneditor:
+    description: Main command for ExtractionRegionEditor.
+    usage: /regioneditor [args]
+    aliases: [re]
