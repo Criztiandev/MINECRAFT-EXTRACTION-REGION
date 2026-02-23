@@ -1,4 +1,4 @@
-﻿package com.criztiandev.extractionregion.models;
+package com.criztiandev.extractionregion.models;
 
 import org.bukkit.Location;
 

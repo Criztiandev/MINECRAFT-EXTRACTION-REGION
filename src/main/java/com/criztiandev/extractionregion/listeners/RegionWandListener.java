@@ -1,4 +1,4 @@
-﻿package com.criztiandev.extractionregion.listeners;
+package com.criztiandev.extractionregion.listeners;
 
 import com.criztiandev.extractionregion.ExtractionRegionPlugin;
 import com.criztiandev.extractionregion.models.RegionSelection;

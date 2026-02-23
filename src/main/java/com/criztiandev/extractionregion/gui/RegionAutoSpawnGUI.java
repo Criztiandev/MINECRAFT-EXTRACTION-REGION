@@ -1,4 +1,4 @@
-﻿package com.criztiandev.extractionregion.gui;
+package com.criztiandev.extractionregion.gui;
 
 import com.criztiandev.extractionregion.ExtractionRegionPlugin;
 import com.criztiandev.extractionchest.models.ParentChestDefinition;
@@ -36,7 +36,7 @@ public class RegionAutoSpawnGUI {
         ItemStack border = createItem(fillerMat, "§8");
         for (int i = 0; i < size; i++) inv.setItem(i, border);
 
-        List<ParentChestDefinition> templates = plugin.getLootTableManager().getAllDefinitions();
+        List<ParentChestDefinition> templates = plugin.getExtractionChestApi().getLootTableManager().getAllDefinitions();
         int slot = 10;
         for (ParentChestDefinition temp : templates) {
             if (slot > size - 10 && slot % 9 == 8) {

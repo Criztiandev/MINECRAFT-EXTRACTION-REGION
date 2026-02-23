@@ -1,4 +1,4 @@
-﻿package com.criztiandev.extractionregion.models;
+package com.criztiandev.extractionregion.models;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -9,6 +9,9 @@ public class SavedRegion {
     private final int minX, maxX, minZ, maxZ;
     private final Map<String, Integer> autoSpawns;
 
+    private long nextResetTime;
+    private int resetIntervalMinutes;
+
     public SavedRegion(String id, String world, int minX, int maxX, int minZ, int maxZ) {
         this.id = id;
         this.world = world;
@@ -17,6 +20,24 @@ public class SavedRegion {
         this.minZ = minZ;
         this.maxZ = maxZ;
         this.autoSpawns = new HashMap<>();
+        this.nextResetTime = 0;
+        this.resetIntervalMinutes = 120; // Default 2 hours
+    }
+
+    public long getNextResetTime() {
+        return nextResetTime;
+    }
+
+    public void setNextResetTime(long nextResetTime) {
+        this.nextResetTime = nextResetTime;
+    }
+
+    public int getResetIntervalMinutes() {
+        return resetIntervalMinutes;
+    }
+
+    public void setResetIntervalMinutes(int resetIntervalMinutes) {
+        this.resetIntervalMinutes = resetIntervalMinutes;
     }
 
     public String getId() {

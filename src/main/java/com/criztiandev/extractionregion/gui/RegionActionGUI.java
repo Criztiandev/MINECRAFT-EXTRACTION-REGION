@@ -1,4 +1,4 @@
-﻿package com.criztiandev.extractionregion.gui;
+package com.criztiandev.extractionregion.gui;
 
 import com.criztiandev.extractionregion.ExtractionRegionPlugin;
 import com.criztiandev.extractionregion.models.SavedRegion;
