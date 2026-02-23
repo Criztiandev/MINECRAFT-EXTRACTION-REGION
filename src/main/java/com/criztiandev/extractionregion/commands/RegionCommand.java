@@ -2,6 +2,7 @@ package com.criztiandev.extractionregion.commands;
 
 import com.criztiandev.extractionregion.ExtractionRegionPlugin;
 import com.criztiandev.extractionregion.gui.RegionListGUI;
+import com.criztiandev.extractionregion.gui.RegionMainGUI;
 import com.criztiandev.extractionregion.models.RegionSelection;
 import com.criztiandev.extractionregion.models.SavedRegion;
 import org.bukkit.Material;
@@ -37,6 +38,11 @@ public class RegionCommand implements CommandExecutor {
         }
 
         if (args.length == 0) {
+            new RegionMainGUI(plugin).openMenu(player);
+            return true;
+        }
+
+        if (args[0].equalsIgnoreCase("help")) {
             player.sendMessage("§eExtractionRegionEditor Commands:");
             player.sendMessage("§7/re wand §f- Get the region selection wand.");
             player.sendMessage("§7/re create <id> §f- Create a region from your selection.");

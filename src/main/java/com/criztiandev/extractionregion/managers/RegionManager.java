@@ -6,7 +6,9 @@ import com.criztiandev.extractionregion.models.SavedRegion;
 
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -15,6 +17,7 @@ public class RegionManager {
     private final ExtractionRegionPlugin plugin;
     private final Map<UUID, RegionSelection> selections = new HashMap<>();
     private final Map<String, SavedRegion> regions = new ConcurrentHashMap<>();
+    private final Set<UUID> creatingPlayers = new HashSet<>();
 
     public RegionManager(ExtractionRegionPlugin plugin) {
         this.plugin = plugin;
@@ -90,6 +93,18 @@ public class RegionManager {
 
     public void removeSelection(UUID uuid) {
         selections.remove(uuid);
+    }
+
+    public void addCreatingPlayer(UUID uuid) {
+        creatingPlayers.add(uuid);
+    }
+
+    public boolean isCreatingPlayer(UUID uuid) {
+        return creatingPlayers.contains(uuid);
+    }
+
+    public void removeCreatingPlayer(UUID uuid) {
+        creatingPlayers.remove(uuid);
     }
 }
 
