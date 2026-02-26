@@ -33,12 +33,24 @@ public class RegionChestDropGUI {
             com.criztiandev.extractionchest.models.ParentChestDefinition def = plugin.getExtractionChestApi().getLootTableManager().getDefinition(defName);
             if (def == null) continue;
 
-            // Generate the extraction chest item
-            ItemStack chestItem = plugin.getExtractionChestApi().getItemManager().getExtractionChestItem(def);
-            if (chestItem == null) continue;
+            // Generate the extraction chest item directly
+            ItemStack chestItem = new ItemStack(org.bukkit.Material.CHEST);
+            ItemMeta meta = chestItem.getItemMeta();
+            if (meta != null) {
+                meta.setDisplayName("§6" + def.getName() + " §7(Placeable Chest)");
+                meta.setLore(java.util.Arrays.asList(
+                    "§7Tier: §f" + def.getTier().name(),
+                    "",
+                    "§ePlace this block to spawn",
+                    "§ean Extraction Chest."
+                ));
+                meta.getPersistentDataContainer().set(new NamespacedKey(plugin.getExtractionChestApi(), "extractionchest-type"), PersistentDataType.STRING, def.getName());
+                // Set the tier key as expected by the InventoryCloseEvent scanner
+                meta.getPersistentDataContainer().set(new NamespacedKey(plugin.getExtractionChestApi(), "extraction-chest-tier"), PersistentDataType.STRING, def.getName());
+                chestItem.setItemMeta(meta);
+            }
 
-            // Give it the proper amount (max stack size visually limits this to 64 per slot, 
-            // but for a 54 slot inventory we can just spread them or set the stack amount)
+            // Give it the proper amount
             while (amount > 0) {
                 ItemStack stack = chestItem.clone();
                 int stackSize = Math.min(amount, stack.getMaxStackSize());
