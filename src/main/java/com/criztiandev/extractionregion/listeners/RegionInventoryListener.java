@@ -6,6 +6,7 @@ import com.criztiandev.extractionregion.gui.RegionAutoSpawnGUI;
 import com.criztiandev.extractionregion.gui.RegionListGUI;
 import com.criztiandev.extractionregion.gui.RegionMainGUI;
 import com.criztiandev.extractionregion.models.SavedRegion;
+import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.entity.Player;
@@ -51,7 +52,7 @@ public class RegionInventoryListener implements Listener {
             if (data.has(new NamespacedKey(plugin, "region-main"), PersistentDataType.STRING)) {
                 String action = data.get(new NamespacedKey(plugin, "region-main"), PersistentDataType.STRING);
                 if ("wand".equals(action)) {
-                    player.chat("/re wand");
+                    player.chat("/lr wand");
                     player.closeInventory();
                 } else if ("create".equals(action)) {
                     player.closeInventory();
@@ -97,11 +98,30 @@ public class RegionInventoryListener implements Listener {
 
                 if ("spawns".equals(action)) {
                     new RegionAutoSpawnGUI(plugin).openMenu(player, region);
+                } else if ("mode".equals(action)) {
+                    SavedRegion.SpawnMode next = region.getSpawnMode() == SavedRegion.SpawnMode.RANDOM ? SavedRegion.SpawnMode.SPECIFIC : SavedRegion.SpawnMode.RANDOM;
+                    player.chat("/lr mode " + regionId + " " + next.name().toLowerCase());
+                    Bukkit.getScheduler().runTaskLater(plugin, () -> new RegionActionGUI(plugin).openMenu(player, region), 1L);
+                } else if ("capture".equals(action)) {
+                    player.chat("/lr capture " + regionId);
+                    player.closeInventory();
                 } else if ("force".equals(action)) {
-                    player.chat("/re spawn " + regionId);
+                    player.chat("/lr spawn " + regionId);
                     player.closeInventory();
                 } else if ("delete".equals(action)) {
-                    player.chat("/re delete " + regionId);
+                    player.chat("/lr delete " + regionId);
+                    player.closeInventory();
+                } else if ("getwand".equals(action)) {
+                    ItemStack wand = new ItemStack(Material.STICK);
+                    ItemMeta wandMeta = wand.getItemMeta();
+                    if (wandMeta != null) {
+                        wandMeta.setDisplayName("§dRegion Wand: " + regionId);
+                        wandMeta.getPersistentDataContainer().set(new NamespacedKey(plugin, "region-wand"), PersistentDataType.BYTE, (byte) 1);
+                        wandMeta.getPersistentDataContainer().set(new NamespacedKey(plugin, "region-id"), PersistentDataType.STRING, regionId);
+                        wand.setItemMeta(wandMeta);
+                    }
+                    player.getInventory().addItem(wand);
+                    player.sendMessage("§aYou have received the Region Wand for §e" + regionId + "§a.");
                     player.closeInventory();
                 }
             }

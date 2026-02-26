@@ -41,6 +41,20 @@ public class RegionManager {
         return regions.get(id.toLowerCase());
     }
 
+    public SavedRegion getRegionAt(org.bukkit.Location location) {
+        if (location.getWorld() == null) return null;
+        for (SavedRegion region : regions.values()) {
+            if (!region.getWorld().equals(location.getWorld().getName())) continue;
+            int x = location.getBlockX();
+            int z = location.getBlockZ();
+            if (x >= region.getMinX() && x <= region.getMaxX() &&
+                z >= region.getMinZ() && z <= region.getMaxZ()) {
+                return region;
+            }
+        }
+        return null;
+    }
+
     public void saveRegion(SavedRegion region) {
         regions.put(region.getId().toLowerCase(), region);
         plugin.getStorageProvider().saveRegion(region);
@@ -65,18 +79,43 @@ public class RegionManager {
 
         // Spawn new chests
         int successCount = 0;
-        RegionSelection selection = region.toRegionSelection();
-        for (Map.Entry<String, Integer> entry : region.getAutoSpawns().entrySet()) {
-            com.criztiandev.extractionchest.models.ParentChestDefinition def = plugin.getExtractionChestApi().getLootTableManager().getDefinition(entry.getKey());
-            if (def == null) continue;
-            
-            for (int i = 0; i < entry.getValue(); i++) {
-                org.bukkit.Location spawnLoc = com.criztiandev.extractionregion.utils.RegionLocationUtils.getRandomSafeLocation(selection, 20);
-                if (spawnLoc != null) {
-                    com.criztiandev.extractionchest.models.ChestInstance instance = new com.criztiandev.extractionchest.models.ChestInstance(UUID.randomUUID().toString(), def.getName(), spawnLoc.getWorld().getName(), spawnLoc.getBlockX(), spawnLoc.getBlockY(), spawnLoc.getBlockZ(), com.criztiandev.extractionchest.models.ChestState.READY, null);
-                    instance.setActiveInventory(plugin.getExtractionChestApi().getLootTableManager().rollLoot(def));
-                    plugin.getExtractionChestApi().getChestInstanceManager().addInstance(instance);
-                    successCount++;
+        
+        if (region.getSpawnMode() == SavedRegion.SpawnMode.SPECIFIC) {
+            org.bukkit.World bukkitWorld = org.bukkit.Bukkit.getWorld(region.getWorld());
+            if (bukkitWorld != null) {
+                for (Map.Entry<String, String> entry : region.getSpecificLocations().entrySet()) {
+                    String[] coords = entry.getKey().split(",");
+                    if (coords.length != 3) continue;
+                    
+                    try {
+                        int x = Integer.parseInt(coords[0]);
+                        int y = Integer.parseInt(coords[1]);
+                        int z = Integer.parseInt(coords[2]);
+                        
+                        com.criztiandev.extractionchest.models.ParentChestDefinition def = plugin.getExtractionChestApi().getLootTableManager().getDefinition(entry.getValue());
+                        if (def == null) continue;
+                        
+                        com.criztiandev.extractionchest.models.ChestInstance instance = new com.criztiandev.extractionchest.models.ChestInstance(UUID.randomUUID().toString(), def.getName(), region.getWorld(), x, y, z, com.criztiandev.extractionchest.models.ChestState.READY, null);
+                        instance.setActiveInventory(plugin.getExtractionChestApi().getLootTableManager().rollLoot(def));
+                        plugin.getExtractionChestApi().getChestInstanceManager().addInstance(instance);
+                        successCount++;
+                    } catch (NumberFormatException ignored) {}
+                }
+            }
+        } else {
+            RegionSelection selection = region.toRegionSelection();
+            for (Map.Entry<String, Integer> entry : region.getAutoSpawns().entrySet()) {
+                com.criztiandev.extractionchest.models.ParentChestDefinition def = plugin.getExtractionChestApi().getLootTableManager().getDefinition(entry.getKey());
+                if (def == null) continue;
+                
+                for (int i = 0; i < entry.getValue(); i++) {
+                    org.bukkit.Location spawnLoc = com.criztiandev.extractionregion.utils.RegionLocationUtils.getRandomSafeLocation(selection, 20);
+                    if (spawnLoc != null) {
+                        com.criztiandev.extractionchest.models.ChestInstance instance = new com.criztiandev.extractionchest.models.ChestInstance(UUID.randomUUID().toString(), def.getName(), spawnLoc.getWorld().getName(), spawnLoc.getBlockX(), spawnLoc.getBlockY(), spawnLoc.getBlockZ(), com.criztiandev.extractionchest.models.ChestState.READY, null);
+                        instance.setActiveInventory(plugin.getExtractionChestApi().getLootTableManager().rollLoot(def));
+                        plugin.getExtractionChestApi().getChestInstanceManager().addInstance(instance);
+                        successCount++;
+                    }
                 }
             }
         }

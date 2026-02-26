@@ -38,6 +38,12 @@ public class RegionWandListener implements Listener {
             return;
         }
 
+        if (meta.getPersistentDataContainer().has(new NamespacedKey(plugin, "region-id"), PersistentDataType.STRING)) {
+            event.setCancelled(true);
+            player.sendMessage("§cThis is a Region-Specific Wand. You cannot use it to create new selections.");
+            return;
+        }
+
         Action action = event.getAction();
         Block block = event.getClickedBlock();
 

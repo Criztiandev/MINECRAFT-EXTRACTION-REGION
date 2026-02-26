@@ -1,6 +1,7 @@
 package com.criztiandev.extractionregion.commands;
 
 import com.criztiandev.extractionregion.ExtractionRegionPlugin;
+import com.criztiandev.extractionregion.gui.RegionActionGUI;
 import com.criztiandev.extractionregion.gui.RegionListGUI;
 import com.criztiandev.extractionregion.gui.RegionMainGUI;
 import com.criztiandev.extractionregion.models.RegionSelection;
@@ -44,11 +45,13 @@ public class RegionCommand implements CommandExecutor {
 
         if (args[0].equalsIgnoreCase("help")) {
             player.sendMessage("§eExtractionRegionEditor Commands:");
-            player.sendMessage("§7/re wand §f- Get the region selection wand.");
-            player.sendMessage("§7/re create <id> §f- Create a region from your selection.");
-            player.sendMessage("§7/re delete <id> §f- Delete an existing region.");
-            player.sendMessage("§7/re list §f- Open the region management GUI.");
-            player.sendMessage("§7/re spawn <id> §f- Force spread chests in a region.");
+            player.sendMessage("§7/lr wand §f- Get the region selection wand.");
+            player.sendMessage("§7/lr create <id> §f- Create a region from your selection.");
+            player.sendMessage("§7/lr delete <id> §f- Delete an existing region.");
+            player.sendMessage("§7/lr list §f- Open the region management GUI.");
+            player.sendMessage("§7/lr spawn <id> §f- Force spread chests in a region.");
+            player.sendMessage("§7/lr mode <id> <random|specific> §f- Set region spawn mode.");
+            player.sendMessage("§7/lr capture <id> §f- Save current chest locations as specific spawns.");
             return true;
         }
 
@@ -68,7 +71,7 @@ public class RegionCommand implements CommandExecutor {
 
         if (args[0].equalsIgnoreCase("create")) {
             if (args.length < 2) {
-                player.sendMessage("§cUsage: /re create <id>");
+                player.sendMessage("§cUsage: /lr create <id>");
                 return true;
             }
 
@@ -100,12 +103,13 @@ public class RegionCommand implements CommandExecutor {
 
             player.sendMessage("§aRegion §e" + id + " §acreated successfully.");
             plugin.getRegionManager().removeSelection(player.getUniqueId());
+            new RegionActionGUI(plugin).openMenu(player, region);
             return true;
         }
 
         if (args[0].equalsIgnoreCase("delete")) {
             if (args.length < 2) {
-                player.sendMessage("§cUsage: /re delete <id>");
+                player.sendMessage("§cUsage: /lr delete <id>");
                 return true;
             }
 
@@ -127,7 +131,7 @@ public class RegionCommand implements CommandExecutor {
 
         if (args[0].equalsIgnoreCase("spawn")) {
             if (args.length < 2) {
-                player.sendMessage("§cUsage: /re spawn <id>");
+                player.sendMessage("§cUsage: /lr spawn <id>");
                 return true;
             }
 
@@ -143,7 +147,60 @@ public class RegionCommand implements CommandExecutor {
             return true;
         }
 
-        player.sendMessage("§cUnknown subcommand. Type /re for help.");
+        if (args[0].equalsIgnoreCase("mode")) {
+            if (args.length < 3) {
+                player.sendMessage("§cUsage: /lr mode <id> <random|specific>");
+                return true;
+            }
+            String id = args[1];
+            SavedRegion region = plugin.getRegionManager().getRegion(id);
+            if (region == null) {
+                player.sendMessage("§cRegion not found.");
+                return true;
+            }
+            try {
+                SavedRegion.SpawnMode mode = SavedRegion.SpawnMode.valueOf(args[2].toUpperCase());
+                region.setSpawnMode(mode);
+                plugin.getRegionManager().saveRegion(region);
+                player.sendMessage("§aRegion §e" + id + " §aspawn mode set to §e" + mode.name() + "§a.");
+            } catch (IllegalArgumentException e) {
+                player.sendMessage("§cInvalid mode. Use 'random' or 'specific'.");
+            }
+            return true;
+        }
+
+        if (args[0].equalsIgnoreCase("capture")) {
+            if (args.length < 2) {
+                player.sendMessage("§cUsage: /lr capture <id>");
+                return true;
+            }
+            String id = args[1];
+            SavedRegion region = plugin.getRegionManager().getRegion(id);
+            if (region == null) {
+                player.sendMessage("§cRegion not found.");
+                return true;
+            }
+
+            region.getSpecificLocations().clear();
+            int count = 0;
+            for (com.criztiandev.extractionchest.models.ChestInstance inst : plugin.getExtractionChestApi().getChestInstanceManager().getAllInstances()) {
+                if (inst.getWorld().equals(region.getWorld())) {
+                    org.bukkit.Location loc = inst.getLocation(org.bukkit.Bukkit.getWorld(inst.getWorld()));
+                    if (loc.getBlockX() >= region.getMinX() && loc.getBlockX() <= region.getMaxX() &&
+                        loc.getBlockZ() >= region.getMinZ() && loc.getBlockZ() <= region.getMaxZ()) {
+                        
+                        String coordKey = loc.getBlockX() + "," + loc.getBlockY() + "," + loc.getBlockZ();
+                        region.getSpecificLocations().put(coordKey, inst.getParentName());
+                        count++;
+                    }
+                }
+            }
+            plugin.getRegionManager().saveRegion(region);
+            player.sendMessage("§aCaptured §e" + count + " §achests locations for region §e" + id + "§a.");
+            return true;
+        }
+
+        player.sendMessage("§cUnknown subcommand. Type /lr help for commands.");
         return true;
     }
 }

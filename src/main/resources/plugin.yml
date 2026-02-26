@@ -11,4 +11,4 @@ commands:
   regioneditor:
     description: Main command for ExtractionRegionEditor.
     usage: /regioneditor [args]
-    aliases: [re]
+    aliases: [re, lr]

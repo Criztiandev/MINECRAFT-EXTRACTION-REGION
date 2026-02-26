@@ -37,7 +37,7 @@ public class RegionChatPromptListener implements Listener {
             // Execute creation command sync
             Bukkit.getScheduler().runTask(plugin, () -> {
                 plugin.getRegionManager().removeCreatingPlayer(player.getUniqueId());
-                player.chat("/re create " + input);
+                player.chat("/lr create " + input);
             });
         }
     }

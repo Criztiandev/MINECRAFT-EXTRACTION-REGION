@@ -3,12 +3,13 @@ package com.criztiandev.extractionregion;
 import com.criztiandev.extractionchest.ExtractionChestPlugin;
 import com.criztiandev.extractionregion.managers.RegionManager;
 import com.criztiandev.extractionregion.storage.RegionStorageProvider;
-import com.criztiandev.extractionregion.storage.YamlRegionStorageProvider;
+import com.criztiandev.extractionregion.storage.SQLiteRegionStorageProvider;
 import com.criztiandev.extractionregion.commands.RegionCommand;
 import com.criztiandev.extractionregion.listeners.RegionChatPromptListener;
 import com.criztiandev.extractionregion.listeners.RegionInventoryListener;
 import com.criztiandev.extractionregion.listeners.RegionWandListener;
 import com.criztiandev.extractionregion.tasks.RegionTickManager;
+import com.criztiandev.extractionregion.tasks.SelectionVisualizerTask;
 import org.bukkit.plugin.java.JavaPlugin;
 
 public class ExtractionRegionPlugin extends JavaPlugin {
@@ -16,6 +17,7 @@ public class ExtractionRegionPlugin extends JavaPlugin {
     private ExtractionChestPlugin extractionChestApi;
     private RegionStorageProvider storageProvider;
     private RegionManager regionManager;
+    private SelectionVisualizerTask visualizerTask;
 
     @Override
     public void onEnable() {
@@ -29,7 +31,7 @@ public class ExtractionRegionPlugin extends JavaPlugin {
             return;
         }
 
-        this.storageProvider = new YamlRegionStorageProvider(this);
+        this.storageProvider = new SQLiteRegionStorageProvider(this);
         this.storageProvider.initialize();
 
         this.regionManager = new RegionManager(this);
@@ -42,10 +44,17 @@ public class ExtractionRegionPlugin extends JavaPlugin {
 
         // Run the region tick manager every 60 seconds (1200 ticks)
         new RegionTickManager(this).runTaskTimer(this, 100L, 1200L);
+
+        // Run the selection visualizer every 10 ticks (0.5 seconds)
+        this.visualizerTask = new SelectionVisualizerTask(this);
+        this.visualizerTask.runTaskTimer(this, 10L, 10L);
     }
 
     @Override
     public void onDisable() {
+        if (this.visualizerTask != null) {
+            this.visualizerTask.clearAll();
+        }
         if (this.storageProvider != null) {
             this.storageProvider.shutdown();
         }

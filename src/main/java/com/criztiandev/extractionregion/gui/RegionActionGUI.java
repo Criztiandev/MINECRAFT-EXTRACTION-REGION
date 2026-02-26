@@ -33,6 +33,37 @@ public class RegionActionGUI {
         }
         for (int i = 0; i < 27; i++) inv.setItem(i, border);
 
+        // Spawn Mode Button
+        ItemStack modeItem = new ItemStack(Material.REPEATER);
+        ItemMeta modeMeta = modeItem.getItemMeta();
+        if (modeMeta != null) {
+            modeMeta.setDisplayName("§e§lSpawn Mode: §f" + region.getSpawnMode().name());
+            modeMeta.setLore(Arrays.asList(
+                "§7Click to toggle between",
+                "§7RANDOM and SPECIFIC modes."
+            ));
+            modeMeta.getPersistentDataContainer().set(new NamespacedKey(plugin, "region-action"), PersistentDataType.STRING, "mode");
+            modeMeta.getPersistentDataContainer().set(new NamespacedKey(plugin, "region-id"), PersistentDataType.STRING, region.getId());
+            modeItem.setItemMeta(modeMeta);
+        }
+        inv.setItem(11, modeItem);
+
+        // Capture Button
+        ItemStack captureItem = new ItemStack(Material.TARGET);
+        ItemMeta captureMeta = captureItem.getItemMeta();
+        if (captureMeta != null) {
+            captureMeta.setDisplayName("§d§lCapture Chests");
+            captureMeta.setLore(Arrays.asList(
+                "§7Click to save the exact locations",
+                "§7of manually placed Extraction",
+                "§7Chests in this region."
+            ));
+            captureMeta.getPersistentDataContainer().set(new NamespacedKey(plugin, "region-action"), PersistentDataType.STRING, "capture");
+            captureMeta.getPersistentDataContainer().set(new NamespacedKey(plugin, "region-id"), PersistentDataType.STRING, region.getId());
+            captureItem.setItemMeta(captureMeta);
+        }
+        inv.setItem(12, captureItem);
+
         // Auto Spawns Button
         ItemStack spawnsItem = new ItemStack(Material.DISPENSER);
         ItemMeta spawnsMeta = spawnsItem.getItemMeta();
@@ -47,7 +78,7 @@ public class RegionActionGUI {
             spawnsMeta.getPersistentDataContainer().set(new NamespacedKey(plugin, "region-id"), PersistentDataType.STRING, region.getId());
             spawnsItem.setItemMeta(spawnsMeta);
         }
-        inv.setItem(11, spawnsItem);
+        inv.setItem(13, spawnsItem);
 
         // Force Spawn Button
         ItemStack forceItem = new ItemStack(Material.BEACON);
@@ -63,7 +94,7 @@ public class RegionActionGUI {
             forceMeta.getPersistentDataContainer().set(new NamespacedKey(plugin, "region-id"), PersistentDataType.STRING, region.getId());
             forceItem.setItemMeta(forceMeta);
         }
-        inv.setItem(13, forceItem);
+        inv.setItem(14, forceItem);
         
         // Delete Region Button
         ItemStack deleteItem = new ItemStack(Material.BARRIER);
@@ -78,7 +109,23 @@ public class RegionActionGUI {
             deleteMeta.getPersistentDataContainer().set(new NamespacedKey(plugin, "region-id"), PersistentDataType.STRING, region.getId());
             deleteItem.setItemMeta(deleteMeta);
         }
-        inv.setItem(15, deleteItem);
+        inv.setItem(16, deleteItem);
+        
+        // Get Region Wand Button
+        ItemStack getWandItem = new ItemStack(Material.STICK);
+        ItemMeta getWandMeta = getWandItem.getItemMeta();
+        if (getWandMeta != null) {
+            getWandMeta.setDisplayName("§d§lGet Region Wand");
+            getWandMeta.setLore(Arrays.asList(
+                "§7Click to receive a wand",
+                "§7that shows the borders",
+                "§7of this specific region."
+            ));
+            getWandMeta.getPersistentDataContainer().set(new NamespacedKey(plugin, "region-action"), PersistentDataType.STRING, "getwand");
+            getWandMeta.getPersistentDataContainer().set(new NamespacedKey(plugin, "region-id"), PersistentDataType.STRING, region.getId());
+            getWandItem.setItemMeta(getWandMeta);
+        }
+        inv.setItem(22, getWandItem);
         
         // Back Button
         ItemStack backItem = new ItemStack(Material.ARROW);

@@ -4,10 +4,15 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class SavedRegion {
+    public enum SpawnMode {
+        RANDOM, SPECIFIC
+    }
     private final String id;
     private final String world;
     private final int minX, maxX, minZ, maxZ;
     private final Map<String, Integer> autoSpawns;
+    private final Map<String, String> specificLocations; // Format: "x,y,z" -> definitionName
+    private SpawnMode spawnMode;
 
     private long nextResetTime;
     private int resetIntervalMinutes;
@@ -20,8 +25,22 @@ public class SavedRegion {
         this.minZ = minZ;
         this.maxZ = maxZ;
         this.autoSpawns = new HashMap<>();
+        this.specificLocations = new HashMap<>();
+        this.spawnMode = SpawnMode.RANDOM;
         this.nextResetTime = 0;
         this.resetIntervalMinutes = 120; // Default 2 hours
+    }
+
+    public SpawnMode getSpawnMode() {
+        return spawnMode;
+    }
+
+    public void setSpawnMode(SpawnMode spawnMode) {
+        this.spawnMode = spawnMode;
+    }
+
+    public Map<String, String> getSpecificLocations() {
+        return specificLocations;
     }
 
     public long getNextResetTime() {

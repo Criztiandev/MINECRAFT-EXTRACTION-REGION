@@ -58,6 +58,19 @@ public class YamlRegionStorageProvider implements RegionStorageProvider {
 
                 SavedRegion region = new SavedRegion(id, world, minX, maxX, minZ, maxZ);
 
+                if (sec.contains("spawnMode")) {
+                    try {
+                        region.setSpawnMode(SavedRegion.SpawnMode.valueOf(sec.getString("spawnMode").toUpperCase()));
+                    } catch (IllegalArgumentException ignored) {}
+                }
+
+                ConfigurationSection specificSec = sec.getConfigurationSection("specific-locations");
+                if (specificSec != null) {
+                    for (String locKey : specificSec.getKeys(false)) {
+                        region.getSpecificLocations().put(locKey, specificSec.getString(locKey));
+                    }
+                }
+
                 if (sec.contains("nextResetTime")) {
                     region.setNextResetTime(sec.getLong("nextResetTime"));
                 }
@@ -96,6 +109,13 @@ public class YamlRegionStorageProvider implements RegionStorageProvider {
             config.set(path + ".auto-spawns", null); // Clear old
             for (Map.Entry<String, Integer> entry : region.getAutoSpawns().entrySet()) {
                 config.set(path + ".auto-spawns." + entry.getKey(), entry.getValue());
+            }
+
+            config.set(path + ".spawnMode", region.getSpawnMode().name());
+
+            config.set(path + ".specific-locations", null); // Clear old
+            for (Map.Entry<String, String> entry : region.getSpecificLocations().entrySet()) {
+                config.set(path + ".specific-locations." + entry.getKey(), entry.getValue());
             }
 
             try {
