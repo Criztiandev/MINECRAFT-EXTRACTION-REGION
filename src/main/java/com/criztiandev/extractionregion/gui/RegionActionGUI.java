@@ -68,13 +68,13 @@ public class RegionActionGUI {
         ItemStack spawnsItem = new ItemStack(Material.DISPENSER);
         ItemMeta spawnsMeta = spawnsItem.getItemMeta();
         if (spawnsMeta != null) {
-            spawnsMeta.setDisplayName("§b§lConfigure Auto-Spawns");
+            spawnsMeta.setDisplayName("§b§lManage Chest Spawns");
             spawnsMeta.setLore(Arrays.asList(
-                "§7Click to set up exactly",
-                "§7how many of each chest tier",
-                "§7spawns in this region."
+                "§7Click to open a drop",
+                "§7inventory where you can",
+                "§7place Extraction Chests."
             ));
-            spawnsMeta.getPersistentDataContainer().set(new NamespacedKey(plugin, "region-action"), PersistentDataType.STRING, "spawns");
+            spawnsMeta.getPersistentDataContainer().set(new NamespacedKey(plugin, "region-action"), PersistentDataType.STRING, "chest");
             spawnsMeta.getPersistentDataContainer().set(new NamespacedKey(plugin, "region-id"), PersistentDataType.STRING, region.getId());
             spawnsItem.setItemMeta(spawnsMeta);
         }

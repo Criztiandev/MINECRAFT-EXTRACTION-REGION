@@ -2,6 +2,7 @@ package com.criztiandev.extractionregion.commands;
 
 import com.criztiandev.extractionregion.ExtractionRegionPlugin;
 import com.criztiandev.extractionregion.gui.RegionActionGUI;
+import com.criztiandev.extractionregion.gui.RegionChestDropGUI;
 import com.criztiandev.extractionregion.gui.RegionListGUI;
 import com.criztiandev.extractionregion.gui.RegionMainGUI;
 import com.criztiandev.extractionregion.models.RegionSelection;
@@ -197,6 +198,22 @@ public class RegionCommand implements CommandExecutor {
             }
             plugin.getRegionManager().saveRegion(region);
             player.sendMessage("§aCaptured §e" + count + " §achests locations for region §e" + id + "§a.");
+            return true;
+        }
+
+        if (args[0].equalsIgnoreCase("chest")) {
+            if (args.length < 2) {
+                player.sendMessage("§cUsage: /lr chest <id>");
+                return true;
+            }
+            String id = args[1];
+            SavedRegion region = plugin.getRegionManager().getRegion(id);
+            if (region == null) {
+                player.sendMessage("§cRegion not found.");
+                return true;
+            }
+
+            new RegionChestDropGUI(plugin).openMenu(player, region);
             return true;
         }
 

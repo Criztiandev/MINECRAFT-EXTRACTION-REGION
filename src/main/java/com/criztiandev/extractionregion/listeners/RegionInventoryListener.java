@@ -2,7 +2,7 @@ package com.criztiandev.extractionregion.listeners;
 
 import com.criztiandev.extractionregion.ExtractionRegionPlugin;
 import com.criztiandev.extractionregion.gui.RegionActionGUI;
-import com.criztiandev.extractionregion.gui.RegionAutoSpawnGUI;
+import com.criztiandev.extractionregion.gui.RegionChestDropGUI;
 import com.criztiandev.extractionregion.gui.RegionListGUI;
 import com.criztiandev.extractionregion.gui.RegionMainGUI;
 import com.criztiandev.extractionregion.models.SavedRegion;
@@ -14,6 +14,7 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.ClickType;
 import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataContainer;
@@ -96,8 +97,8 @@ public class RegionInventoryListener implements Listener {
                 SavedRegion region = plugin.getRegionManager().getRegion(regionId);
                 if (region == null) return;
 
-                if ("spawns".equals(action)) {
-                    new RegionAutoSpawnGUI(plugin).openMenu(player, region);
+                if ("chest".equals(action)) {
+                    new RegionChestDropGUI(plugin).openMenu(player, region);
                 } else if ("mode".equals(action)) {
                     SavedRegion.SpawnMode next = region.getSpawnMode() == SavedRegion.SpawnMode.RANDOM ? SavedRegion.SpawnMode.SPECIFIC : SavedRegion.SpawnMode.RANDOM;
                     player.chat("/lr mode " + regionId + " " + next.name().toLowerCase());
@@ -128,29 +129,54 @@ public class RegionInventoryListener implements Listener {
             return;
         }
 
-        // Handle Region Auto Spawn
-        if (title.equals(plugin.getConfig().getString("region-gui.title", "§8▶ §dConfigure Auto Spawns").replace("&", "§"))) {
-            if (data.has(new NamespacedKey(plugin, "region-gui-type"), PersistentDataType.STRING)) {
-                String type = data.get(new NamespacedKey(plugin, "region-gui-type"), PersistentDataType.STRING);
-                String regionId = data.get(new NamespacedKey(plugin, "region-gui-region"), PersistentDataType.STRING);
-                
-                if (regionId == null || type == null) return;
-                SavedRegion region = plugin.getRegionManager().getRegion(regionId);
-                if (region == null) return;
+        // Note: The Region Auto Spawn click-GUI was removed/replaced by Chest Drop GUI
+    }
 
-                int amount = region.getAutoSpawnAmount(type);
-                if (event.getClick() == ClickType.LEFT) {
-                    amount++;
-                } else if (event.getClick() == ClickType.RIGHT) {
-                    amount = Math.max(0, amount - 1);
+    @EventHandler
+    public void onInventoryClose(InventoryCloseEvent event) {
+        if (!(event.getPlayer() instanceof Player)) return;
+        Player player = (Player) event.getPlayer();
+        String title = event.getView().getTitle();
+
+        if (title.startsWith("§8▶ §dDrop Chests: §7")) {
+            String regionId = title.substring("§8▶ §dDrop Chests: §7".length());
+            SavedRegion region = plugin.getRegionManager().getRegion(regionId);
+            if (region == null) return;
+
+            // Clear existing random spawns so we only save what is exactly in the menu
+            region.getAutoSpawns().clear();
+            
+            int totalChests = 0;
+            
+            // Scan through all 54 slots
+            for (ItemStack item : event.getInventory().getContents()) {
+                if (item == null || item.getType() == Material.AIR || !item.hasItemMeta()) continue;
+                
+                ItemMeta meta = item.getItemMeta();
+                PersistentDataContainer data = meta.getPersistentDataContainer();
+                
+                // ExtractionChest assigns a "extraction-chest-tier" string to its items. 
+                // We'll use this to identify the Definition Name.
+                NamespacedKey tierKey = new NamespacedKey("extractionchest", "extraction-chest-tier");
+                
+                // Support older versions / variations just in case
+                if (data.has(tierKey, PersistentDataType.STRING)) {
+                    String defName = data.get(tierKey, PersistentDataType.STRING);
+                    int count = item.getAmount();
+                    
+                    region.setAutoSpawn(defName, region.getAutoSpawnAmount(defName) + count);
+                    totalChests += count;
                 }
-
-                region.setAutoSpawn(type, amount);
-                plugin.getRegionManager().saveRegion(region);
-                
-                // Refresh GUI
-                new RegionAutoSpawnGUI(plugin).openMenu(player, region);
             }
+
+            // Save region
+            plugin.getRegionManager().saveRegion(region);
+            player.sendMessage("§aSaved §e" + totalChests + " §achests to spawn randomly in region §e" + regionId + "§a!");
+            
+            // Re-open Action GUI seamlessly
+            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                new RegionActionGUI(plugin).openMenu(player, region);
+            }, 1L);
         }
     }
 }
