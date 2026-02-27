@@ -40,7 +40,24 @@ public class SavedRegion {
     }
 
     public long getNextResetTime() {
-        return nextResetTime;
+        if (resetIntervalMinutes <= 0) return 0;
+        
+        java.time.ZoneId phZoneId = java.time.ZoneId.of("Asia/Manila");
+        java.time.ZonedDateTime manilaTime = java.time.ZonedDateTime.now(phZoneId);
+        int currentMinuteOfDay = manilaTime.getHour() * 60 + manilaTime.getMinute();
+        
+        if (currentMinuteOfDay % resetIntervalMinutes == 0 && lastResetMinuteOfDay != currentMinuteOfDay) {
+            // It's due right now! Return a past timestamp to trigger the UI "Pending/Processing..." state
+            return System.currentTimeMillis() - 1000; 
+        }
+        
+        int minutesToNext = resetIntervalMinutes - (currentMinuteOfDay % resetIntervalMinutes);
+        
+        // Accurately calculate seconds until the actual clock minute flips over
+        long secondsUntilNextMinute = 60 - manilaTime.getSecond();
+        long totalSecondsToNext = ((minutesToNext - 1) * 60L) + secondsUntilNextMinute;
+        
+        return System.currentTimeMillis() + (totalSecondsToNext * 1000L);
     }
 
     public void setNextResetTime(long nextResetTime) {

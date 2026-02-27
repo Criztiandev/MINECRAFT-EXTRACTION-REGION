@@ -5,3 +5,8 @@
 settings:
   debug: false
   prefix: "&8[&bExtractionChest&8]&r"
+
+# Region settings
+region:
+  always-show-regions: false
+  replenish-batch-size: 5

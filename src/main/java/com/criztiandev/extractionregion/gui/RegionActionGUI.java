@@ -97,6 +97,19 @@ public class RegionActionGUI {
                     lore.add("§8- §7" + entry.getKey() + ": §f" + entry.getValue());
                 }
                 
+                
+                long nextReset = region.getNextResetTime();
+                if (nextReset > 0) {
+                    long remaining = nextReset - System.currentTimeMillis();
+                    if (remaining > 0) {
+                        lore.add("§eNext Reset: §f" + com.criztiandev.extractionregion.utils.TimeUtil.formatDuration(remaining));
+                    } else {
+                        lore.add("§eNext Reset: §cPending/Processing...");
+                    }
+                } else {
+                    lore.add("§eNext Reset: §fEvery " + region.getResetIntervalMinutes() + "m");
+                }
+                
                 overviewMeta.setLore(lore);
             }
             overviewItem.setItemMeta(overviewMeta);
@@ -117,9 +130,9 @@ public class RegionActionGUI {
             getWandMeta.getPersistentDataContainer().set(new NamespacedKey(plugin, "region-id"), PersistentDataType.STRING, region.getId());
             getWandItem.setItemMeta(getWandMeta);
         }
-        inv.setItem(12, getWandItem);
+        inv.setItem(26, getWandItem);
 
-        // 3. Center Action Button (Slot 13)
+        // 3. Center Action Button (Slot 12)
         if (region.getType() == com.criztiandev.extractionregion.models.RegionType.EXTRACTION) {
             ItemStack conduitItem = new ItemStack(Material.END_ROD);
             ItemMeta conduitMeta = conduitItem.getItemMeta();
@@ -136,7 +149,7 @@ public class RegionActionGUI {
                 conduitMeta.getPersistentDataContainer().set(new NamespacedKey(plugin, "region-id"), PersistentDataType.STRING, region.getId());
                 conduitItem.setItemMeta(conduitMeta);
             }
-            inv.setItem(13, conduitItem);
+            inv.setItem(12, conduitItem);
         } else if (region.getType() == com.criztiandev.extractionregion.models.RegionType.CHEST_REPLENISH) {
             ItemStack forceItem = new ItemStack(Material.EMERALD_BLOCK);
             ItemMeta forceMeta = forceItem.getItemMeta();
@@ -151,7 +164,7 @@ public class RegionActionGUI {
                 forceMeta.getPersistentDataContainer().set(new NamespacedKey(plugin, "region-id"), PersistentDataType.STRING, region.getId());
                 forceItem.setItemMeta(forceMeta);
             }
-            inv.setItem(13, forceItem);
+            inv.setItem(12, forceItem);
         } else if (region.getType() == com.criztiandev.extractionregion.models.RegionType.ENTRY_REGION) {
             ItemStack dropZoneItem = new ItemStack(Material.ENDER_EYE);
             ItemMeta dropZoneMeta = dropZoneItem.getItemMeta();
@@ -167,10 +180,10 @@ public class RegionActionGUI {
                 dropZoneMeta.getPersistentDataContainer().set(new NamespacedKey(plugin, "region-id"), PersistentDataType.STRING, region.getId());
                 dropZoneItem.setItemMeta(dropZoneMeta);
             }
-            inv.setItem(13, dropZoneItem);
+            inv.setItem(12, dropZoneItem);
         }
 
-        // 4. Settings/Timer Button (Slot 14)
+        // 4. Settings/Timer Button (Slot 13)
         if (region.getType() == com.criztiandev.extractionregion.models.RegionType.EXTRACTION) {
             ItemStack editItem = new ItemStack(Material.REPEATER);
             ItemMeta editMeta = editItem.getItemMeta();
@@ -185,7 +198,7 @@ public class RegionActionGUI {
                 editMeta.getPersistentDataContainer().set(new NamespacedKey(plugin, "region-id"), PersistentDataType.STRING, region.getId());
                 editItem.setItemMeta(editMeta);
             }
-            inv.setItem(14, editItem);
+            inv.setItem(13, editItem);
         } else if (region.getType() == com.criztiandev.extractionregion.models.RegionType.CHEST_REPLENISH) {
             ItemStack timerItem = new ItemStack(Material.CLOCK);
             ItemMeta timerMeta = timerItem.getItemMeta();
@@ -199,13 +212,15 @@ public class RegionActionGUI {
                     "",
                     "§eClick to cycle the timer",
                     "§ethat auto-replenishes chests",
-                    "§einside this region."
+                    "§einside this region.",
+                    "",
+                    "§eShift-Click to set a custom timer"
                 ));
                 timerMeta.getPersistentDataContainer().set(new NamespacedKey(plugin, "region-action"), PersistentDataType.STRING, "timer");
                 timerMeta.getPersistentDataContainer().set(new NamespacedKey(plugin, "region-id"), PersistentDataType.STRING, region.getId());
                 timerItem.setItemMeta(timerMeta);
             }
-            inv.setItem(14, timerItem);
+            inv.setItem(13, timerItem);
         } else if (region.getType() == com.criztiandev.extractionregion.models.RegionType.ENTRY_REGION) {
             ItemStack settingsItem = new ItemStack(Material.REPEATER);
             ItemMeta settingsMeta = settingsItem.getItemMeta();
@@ -220,10 +235,10 @@ public class RegionActionGUI {
                 settingsMeta.getPersistentDataContainer().set(new NamespacedKey(plugin, "region-id"), PersistentDataType.STRING, region.getId());
                 settingsItem.setItemMeta(settingsMeta);
             }
-            inv.setItem(14, settingsItem);
+            inv.setItem(13, settingsItem);
         }
 
-        // 5. Delete Region Button (Slot 15)
+        // 5. Delete Region Button (Slot 14)
         ItemStack deleteItem = new ItemStack(Material.BARRIER);
         ItemMeta deleteMeta = deleteItem.getItemMeta();
         if (deleteMeta != null) {
@@ -236,9 +251,9 @@ public class RegionActionGUI {
             deleteMeta.getPersistentDataContainer().set(new NamespacedKey(plugin, "region-id"), PersistentDataType.STRING, region.getId());
             deleteItem.setItemMeta(deleteMeta);
         }
-        inv.setItem(15, deleteItem);
+        inv.setItem(14, deleteItem);
         
-        // Manage Chests Button (Slot 16)
+        // Manage Chests Button (Slot 15)
         if (region.getType() == com.criztiandev.extractionregion.models.RegionType.CHEST_REPLENISH) {
             ItemStack manageChestsItem = new ItemStack(Material.CHEST);
             ItemMeta manageChestsMeta = manageChestsItem.getItemMeta();
@@ -253,7 +268,7 @@ public class RegionActionGUI {
                 manageChestsMeta.getPersistentDataContainer().set(new NamespacedKey(plugin, "region-id"), PersistentDataType.STRING, region.getId());
                 manageChestsItem.setItemMeta(manageChestsMeta);
             }
-            inv.setItem(16, manageChestsItem);
+            inv.setItem(15, manageChestsItem);
         }
         
         ItemStack backItem = new ItemStack(Material.ARROW);

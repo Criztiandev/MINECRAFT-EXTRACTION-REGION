@@ -39,17 +39,32 @@ public class RegionCommand implements CommandExecutor {
         }
 
         if (command.getName().equalsIgnoreCase("regionchest")) {
-            new com.criztiandev.extractionregion.gui.RegionSubMenuGUI(plugin).openMenu(player, com.criztiandev.extractionregion.models.RegionType.CHEST_REPLENISH);
+            if (args.length > 0 && args[0].equalsIgnoreCase("create")) {
+                plugin.getRegionManager().addCreatingPlayer(player.getUniqueId(), com.criztiandev.extractionregion.models.RegionType.CHEST_REPLENISH);
+                player.sendMessage("§aPlease type the name of your new region in chat (or type 'cancel' to abort).");
+            } else {
+                new com.criztiandev.extractionregion.gui.RegionSubMenuGUI(plugin).openMenu(player, com.criztiandev.extractionregion.models.RegionType.CHEST_REPLENISH);
+            }
             return true;
         }
 
         if (command.getName().equalsIgnoreCase("regionentry")) {
-            new com.criztiandev.extractionregion.gui.RegionSubMenuGUI(plugin).openMenu(player, com.criztiandev.extractionregion.models.RegionType.ENTRY_REGION);
+            if (args.length > 0 && args[0].equalsIgnoreCase("create")) {
+                plugin.getRegionManager().addCreatingPlayer(player.getUniqueId(), com.criztiandev.extractionregion.models.RegionType.ENTRY_REGION);
+                player.sendMessage("§aPlease type the name of your new region in chat (or type 'cancel' to abort).");
+            } else {
+                new com.criztiandev.extractionregion.gui.RegionSubMenuGUI(plugin).openMenu(player, com.criztiandev.extractionregion.models.RegionType.ENTRY_REGION);
+            }
             return true;
         }
 
         if (command.getName().equalsIgnoreCase("regionexit")) {
-            new com.criztiandev.extractionregion.gui.RegionSubMenuGUI(plugin).openMenu(player, com.criztiandev.extractionregion.models.RegionType.EXTRACTION);
+            if (args.length > 0 && args[0].equalsIgnoreCase("create")) {
+                plugin.getRegionManager().addCreatingPlayer(player.getUniqueId(), com.criztiandev.extractionregion.models.RegionType.EXTRACTION);
+                player.sendMessage("§aPlease type the name of your new region in chat (or type 'cancel' to abort).");
+            } else {
+                new com.criztiandev.extractionregion.gui.RegionSubMenuGUI(plugin).openMenu(player, com.criztiandev.extractionregion.models.RegionType.EXTRACTION);
+            }
             return true;
         }
 
@@ -194,6 +209,43 @@ public class RegionCommand implements CommandExecutor {
 
             int replenished = plugin.getRegionManager().forceReplenish(region);
             player.sendMessage("§aForced replenish for region §e" + id + "§a. Replenished §e" + replenished + " §achests.");
+            return true;
+        }
+
+        if (args[0].equalsIgnoreCase("profile")) {
+            if (args.length < 2) {
+                player.sendMessage("§cUsage: /lr profile <region>");
+                return true;
+            }
+            String id = args[1];
+            SavedRegion region = plugin.getRegionManager().getRegion(id);
+            if (region == null) {
+                player.sendMessage("§cRegion not found.");
+                return true;
+            }
+            
+            player.sendMessage("§8[§bExtractionChest§8] §aRegion Profile: §e" + region.getId());
+            player.sendMessage("§7Type: §f" + region.getType().name());
+            player.sendMessage("§7World: §f" + region.getWorld());
+            player.sendMessage("§7Coords: §fX: " + region.getMinX() + " to " + region.getMaxX() + ", Z: " + region.getMinZ() + " to " + region.getMaxZ());
+            
+            if (region.getType() == com.criztiandev.extractionregion.models.RegionType.CHEST_REPLENISH) {
+                long nextReset = region.getNextResetTime();
+                if (nextReset > 0) {
+                    long remaining = nextReset - System.currentTimeMillis();
+                    if (remaining > 0) {
+                        player.sendMessage("§7Next Reset: §f" + com.criztiandev.extractionregion.utils.TimeUtil.formatDuration(remaining));
+                    } else {
+                        player.sendMessage("§7Next Reset: §cPending/Processing...");
+                    }
+                } else {
+                    player.sendMessage("§7Next Reset: §fConfigured Every " + region.getResetIntervalMinutes() + "m");
+                }
+            } else if (region.getType() == com.criztiandev.extractionregion.models.RegionType.EXTRACTION) {
+                player.sendMessage("§7Cooldown: §f" + region.getCooldownMinutes() + "m, Capacity: §f" + region.getMinCapacity() + "-" + region.getMaxCapacity());
+            } else if (region.getType() == com.criztiandev.extractionregion.models.RegionType.ENTRY_REGION) {
+                player.sendMessage("§7SlowFalling: §f" + region.getSlowFallingSeconds() + "s, Blindness: §f" + region.getBlindnessSeconds() + "s");
+            }
             return true;
         }
 

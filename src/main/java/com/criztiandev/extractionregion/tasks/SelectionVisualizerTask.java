@@ -40,23 +40,26 @@ public class SelectionVisualizerTask extends BukkitRunnable {
             SavedRegion targetRegion = null;
             
             ItemStack item = player.getInventory().getItemInMainHand();
-            if (item != null && item.getType() == Material.STICK && item.hasItemMeta()) {
+            if (com.criztiandev.extractionregion.utils.WandUtil.isWand(plugin, item)) {
                 ItemMeta meta = item.getItemMeta();
-                if (meta.getPersistentDataContainer().has(new NamespacedKey(plugin, "region-wand"), PersistentDataType.BYTE)) {
-                    if (meta.getPersistentDataContainer().has(new NamespacedKey(plugin, "region-id"), PersistentDataType.STRING)) {
-                        String regionId = meta.getPersistentDataContainer().get(new NamespacedKey(plugin, "region-id"), PersistentDataType.STRING);
-                        targetRegion = plugin.getRegionManager().getRegion(regionId);
-                        if (targetRegion != null) {
-                            shouldShow = true;
-                        }
-                    } else if (selection != null && (selection.getPos1() != null || selection.getPos2() != null)) {
+                if (meta.getPersistentDataContainer().has(new NamespacedKey(plugin, "region-id"), PersistentDataType.STRING)) {
+                    String regionId = meta.getPersistentDataContainer().get(new NamespacedKey(plugin, "region-id"), PersistentDataType.STRING);
+                    targetRegion = plugin.getRegionManager().getRegion(regionId);
+                    if (targetRegion != null) {
                         shouldShow = true;
-                    } else {
-                        targetRegion = plugin.getRegionManager().getRegionAt(player.getLocation());
-                        if (targetRegion != null) {
-                            shouldShow = true;
-                        }
                     }
+                } else if (selection != null && (selection.getPos1() != null || selection.getPos2() != null)) {
+                    shouldShow = true;
+                } else {
+                    targetRegion = plugin.getRegionManager().getRegionAt(player.getLocation());
+                    if (targetRegion != null) {
+                        shouldShow = true;
+                    }
+                }
+            } else if (player.hasPermission("extractionchest.admin") && plugin.getConfig().getBoolean("region.always-show-regions", false)) {
+                targetRegion = plugin.getRegionManager().getRegionAt(player.getLocation());
+                if (targetRegion != null) {
+                    shouldShow = true;
                 }
             }
 

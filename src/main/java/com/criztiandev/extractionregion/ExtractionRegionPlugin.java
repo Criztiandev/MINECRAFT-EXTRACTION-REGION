@@ -26,6 +26,7 @@ public class ExtractionRegionPlugin extends JavaPlugin {
         getLogger().info("ExtractionRegionEditor has been enabled!");
         saveDefaultConfig();
 
+        // Initialize ExtractionChest API
         this.extractionChestApi = (ExtractionChestPlugin) getServer().getPluginManager().getPlugin("ExtractionChest");
         if (this.extractionChestApi == null) {
             getLogger().severe("ExtractionChest not found! Disabling...");
@@ -39,6 +40,18 @@ public class ExtractionRegionPlugin extends JavaPlugin {
         this.regionManager = new RegionManager(this);
         this.regionManager.loadAll();
 
+        // Inject Region Timer Override into ExtractionChest
+        this.extractionChestApi.setRegionTimerCallback(chest -> {
+            org.bukkit.World world = org.bukkit.Bukkit.getWorld(chest.getWorld());
+            if (world != null) {
+                com.criztiandev.extractionregion.models.SavedRegion region = this.regionManager.getRegionAt(chest.getLocation(world));
+                if (region != null && region.getType() == com.criztiandev.extractionregion.models.RegionType.CHEST_REPLENISH && region.getResetIntervalMinutes() > 0) {
+                    return region.getNextResetTime();
+                }
+            }
+            return null;
+        });
+
         getServer().getPluginManager().registerEvents(new RegionWandListener(this), this);
         getServer().getPluginManager().registerEvents(new RegionInventoryListener(this), this);
         getServer().getPluginManager().registerEvents(new RegionChatPromptListener(this), this);
@@ -49,8 +62,8 @@ public class ExtractionRegionPlugin extends JavaPlugin {
         if (getCommand("regionentry") != null) getCommand("regionentry").setExecutor(regionCommand);
         if (getCommand("regionexit") != null) getCommand("regionexit").setExecutor(regionCommand);
 
-        // Run the region tick manager every 60 seconds (1200 ticks)
-        new RegionTickManager(this).runTaskTimer(this, 100L, 1200L);
+        // Run the region tick manager every 10 seconds (200 ticks)
+        new RegionTickManager(this).runTaskTimer(this, 100L, 200L);
 
         // Run the selection visualizer every 10 ticks (0.5 seconds)
         this.visualizerTask = new SelectionVisualizerTask(this);

@@ -58,6 +58,11 @@ public class RegionInventoryListener implements Listener {
                 String action = data.get(new NamespacedKey(plugin, "region-main"), PersistentDataType.STRING);
                 if ("wands".equals(action)) {
                     new com.criztiandev.extractionregion.gui.WandMenuGUI(plugin).openMenu(player);
+                } else if ("toggle_visibility".equals(action)) {
+                    boolean current = plugin.getConfig().getBoolean("region.always-show-regions", false);
+                    plugin.getConfig().set("region.always-show-regions", !current);
+                    plugin.saveConfig();
+                    new RegionMainGUI(plugin).openMenu(player);
                 } else if ("cat_chest".equals(action)) {
                     new com.criztiandev.extractionregion.gui.RegionSubMenuGUI(plugin).openMenu(player, com.criztiandev.extractionregion.models.RegionType.CHEST_REPLENISH);
                 } else if ("cat_extraction".equals(action)) {
@@ -170,6 +175,13 @@ public class RegionInventoryListener implements Listener {
                     int count = plugin.getRegionManager().forceReplenish(region);
                     player.sendMessage("§aForce replenished " + count + " chests in region §e" + regionId + "§a.");
                 } else if ("timer".equals(action)) {
+                    if (event.isShiftClick()) {
+                        player.closeInventory();
+                        plugin.getRegionManager().addTimerConfiguringPlayer(player.getUniqueId(), regionId);
+                        player.sendMessage("§ePlease type the custom timer interval in minutes in chat (or type 'cancel' to abort).");
+                        return;
+                    }
+                    
                     // Cycle: 60 (1h) -> 120 (2h) -> 360 (6h) -> 720 (12h) -> 1440 (24h)
                     int current = region.getResetIntervalMinutes();
                     int next = 60; // default start

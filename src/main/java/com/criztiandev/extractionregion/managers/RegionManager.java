@@ -20,6 +20,7 @@ public class RegionManager {
     private final Map<UUID, RegionSelection> selections = new HashMap<>();
     private final Map<String, SavedRegion> regions = new ConcurrentHashMap<>();
     private final Map<UUID, RegionType> creatingPlayers = new ConcurrentHashMap<>();
+    private final Map<UUID, String> timerConfiguringPlayers = new ConcurrentHashMap<>();
 
     public RegionManager(ExtractionRegionPlugin plugin) {
         this.plugin = plugin;
@@ -91,9 +92,10 @@ public class RegionManager {
         java.util.List<com.criztiandev.extractionchest.models.ChestInstance> chestsToReplenish = new java.util.ArrayList<>();
         for (com.criztiandev.extractionchest.models.ChestInstance inst : plugin.getExtractionChestApi().getChestInstanceManager().getAllInstances()) {
             if (inst.getWorld().equals(region.getWorld())) {
-                org.bukkit.Location loc = inst.getLocation(org.bukkit.Bukkit.getWorld(inst.getWorld()));
-                if (loc.getBlockX() >= region.getMinX() && loc.getBlockX() <= region.getMaxX() &&
-                    loc.getBlockZ() >= region.getMinZ() && loc.getBlockZ() <= region.getMaxZ()) {
+                int cx = inst.getX();
+                int cz = inst.getZ();
+                if (cx >= region.getMinX() && cx <= region.getMaxX() &&
+                    cz >= region.getMinZ() && cz <= region.getMaxZ()) {
                     chestsToReplenish.add(inst);
                 }
             }
@@ -103,7 +105,7 @@ public class RegionManager {
 
         new org.bukkit.scheduler.BukkitRunnable() {
             int index = 0;
-            final int BATCH_SIZE = 5;
+            final int BATCH_SIZE = plugin.getConfig().getInt("region.replenish-batch-size", 5);
 
             @Override
             public void run() {
@@ -124,10 +126,23 @@ public class RegionManager {
                 }
             }
         }.runTaskTimer(plugin, 1L, 1L);
-        
-        region.setNextResetTime(System.currentTimeMillis() + (region.getResetIntervalMinutes() * 60000L));
-        saveRegion(region); // Save the updated timer
         return chestsToReplenish.size();
+    }
+
+    public void addTimerConfiguringPlayer(UUID uuid, String regionId) {
+        timerConfiguringPlayers.put(uuid, regionId);
+    }
+
+    public void removeTimerConfiguringPlayer(UUID uuid) {
+        timerConfiguringPlayers.remove(uuid);
+    }
+
+    public boolean isTimerConfiguringPlayer(UUID uuid) {
+        return timerConfiguringPlayers.containsKey(uuid);
+    }
+
+    public String getTimerConfiguringRegionId(UUID uuid) {
+        return timerConfiguringPlayers.get(uuid);
     }
 
     public RegionSelection getSelection(UUID uuid) {

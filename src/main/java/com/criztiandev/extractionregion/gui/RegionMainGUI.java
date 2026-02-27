@@ -87,6 +87,25 @@ public class RegionMainGUI {
         }
         inv.setItem(22, wandItem);
 
+        // Global Visibility Toggle Button (Slot 26)
+        ItemStack visItem = new ItemStack(Material.ENDER_EYE);
+        ItemMeta visMeta = visItem.getItemMeta();
+        if (visMeta != null) {
+            boolean isVisible = plugin.getConfig().getBoolean("region.always-show-regions", false);
+            visMeta.setDisplayName(isVisible ? "§a§lGlobal Visibility: ON" : "§c§lGlobal Visibility: OFF");
+            visMeta.setLore(Arrays.asList(
+                "§7When enabled, Admins will",
+                "§7always see the boundaries of",
+                "§7any region they are standing in,",
+                "§7even without holding a wand.",
+                "",
+                "§eClick to toggle this setting."
+            ));
+            visMeta.getPersistentDataContainer().set(new NamespacedKey(plugin, "region-main"), PersistentDataType.STRING, "toggle_visibility");
+            visItem.setItemMeta(visMeta);
+        }
+        inv.setItem(26, visItem);
+
         player.openInventory(inv);
     }
 }

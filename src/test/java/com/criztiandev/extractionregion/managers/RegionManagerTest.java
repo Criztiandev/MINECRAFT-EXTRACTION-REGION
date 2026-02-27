@@ -17,6 +17,7 @@ import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import com.criztiandev.extractionregion.storage.RegionStorageProvider;
+import org.bukkit.configuration.file.FileConfiguration;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -50,6 +51,9 @@ public class RegionManagerTest {
     @Mock
     private RegionStorageProvider storageProviderMock;
 
+    @Mock
+    private FileConfiguration configMock;
+
     private RegionManager regionManager;
     private SavedRegion testRegion;
 
@@ -63,7 +67,9 @@ public class RegionManagerTest {
 
         when(pluginMock.getExtractionChestApi()).thenReturn(extractionChestApiMock);
         when(extractionChestApiMock.getChestInstanceManager()).thenReturn(chestInstanceManagerMock);
-        when(pluginMock.getStorageProvider()).thenReturn(storageProviderMock);
+        lenient().when(pluginMock.getStorageProvider()).thenReturn(storageProviderMock);
+        lenient().when(pluginMock.getConfig()).thenReturn(configMock);
+        lenient().when(configMock.getInt("region.replenish-batch-size", 5)).thenReturn(5);
     }
 
     @Test
@@ -81,8 +87,8 @@ public class RegionManagerTest {
             for (int i = 0; i < 50; i++) {
                 ChestInstance inst = mock(ChestInstance.class);
                 when(inst.getWorld()).thenReturn("world");
-                Location loc = new Location(worldMock, 50, 60, 50); // strictly inside
-                when(inst.getLocation(worldMock)).thenReturn(loc);
+                when(inst.getX()).thenReturn(50);
+                when(inst.getZ()).thenReturn(50);
                 mockInstances.add(inst);
             }
 
@@ -90,8 +96,8 @@ public class RegionManagerTest {
             for (int i = 0; i < 950; i++) {
                 ChestInstance inst = mock(ChestInstance.class);
                 when(inst.getWorld()).thenReturn("world");
-                Location loc = new Location(worldMock, 200, 60, 200); // strictly outside
-                when(inst.getLocation(worldMock)).thenReturn(loc);
+                when(inst.getX()).thenReturn(200);
+                when(inst.getZ()).thenReturn(200);
                 mockInstances.add(inst);
             }
 

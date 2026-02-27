@@ -60,13 +60,33 @@ public class RegionListGUI {
             ItemMeta meta = item.getItemMeta();
             if (meta != null) {
                 meta.setDisplayName(prefix + region.getId());
-                meta.setLore(Arrays.asList(
+                java.util.List<String> lore = new java.util.ArrayList<>(Arrays.asList(
                     "§7World: §f" + region.getWorld(),
                     "§7Pos1: §f" + region.getMinX() + ", " + region.getMinZ(),
-                    "§7Pos2: §f" + region.getMaxX() + ", " + region.getMaxZ(),
-                    "",
-                    "§eClick to manage this region."
+                    "§7Pos2: §f" + region.getMaxX() + ", " + region.getMaxZ()
                 ));
+
+                if (isExtraction) {
+                    lore.add("§7Type: §eExtraction Zone");
+                } else if (isEntry) {
+                    lore.add("§7Type: §aEntry/Drop Zone");
+                } else {
+                    long nextReset = region.getNextResetTime();
+                    if (nextReset > 0) {
+                        long remaining = nextReset - System.currentTimeMillis();
+                        if (remaining > 0) {
+                            lore.add("§eNext Reset: §f" + com.criztiandev.extractionregion.utils.TimeUtil.formatDuration(remaining));
+                        } else {
+                            lore.add("§eNext Reset: §cPending/Processing...");
+                        }
+                    } else {
+                        lore.add("§eNext Reset: §fEvery " + region.getResetIntervalMinutes() + "m");
+                    }
+                }
+
+                lore.add("");
+                lore.add("§eClick to manage this region.");
+                meta.setLore(lore);
                 meta.getPersistentDataContainer().set(new NamespacedKey(plugin, "region-id"), PersistentDataType.STRING, region.getId());
                 item.setItemMeta(meta);
             }

@@ -46,6 +46,42 @@ public class RegionChatPromptListener implements Listener {
                 plugin.getRegionManager().removeCreatingPlayer(player.getUniqueId());
                 player.chat("/lr create " + input + " " + finalTypeStr);
             });
+            return;
+        }
+
+        if (plugin.getRegionManager().isTimerConfiguringPlayer(player.getUniqueId())) {
+            event.setCancelled(true);
+            String input = event.getMessage().trim();
+
+            if (input.equalsIgnoreCase("cancel")) {
+                plugin.getRegionManager().removeTimerConfiguringPlayer(player.getUniqueId());
+                player.sendMessage("§cTimer configuration cancelled.");
+                return;
+            }
+
+            try {
+                int minutes = Integer.parseInt(input);
+                if (minutes <= 0) {
+                    player.sendMessage("§cPlease enter a number greater than 0.");
+                    return;
+                }
+
+                String regionId = plugin.getRegionManager().getTimerConfiguringRegionId(player.getUniqueId());
+                plugin.getRegionManager().removeTimerConfiguringPlayer(player.getUniqueId());
+
+                com.criztiandev.extractionregion.models.SavedRegion region = plugin.getRegionManager().getRegion(regionId);
+                if (region != null) {
+                    region.setResetIntervalMinutes(minutes);
+                    plugin.getRegionManager().saveRegion(region);
+                    player.sendMessage("§aTimer interval set to " + minutes + " minutes.");
+                    
+                    Bukkit.getScheduler().runTask(plugin, () -> {
+                        new com.criztiandev.extractionregion.gui.RegionActionGUI(plugin).openMenu(player, region);
+                    });
+                }
+            } catch (NumberFormatException e) {
+                player.sendMessage("§cInvalid number. Please enter a valid integer (e.g., 60), or type 'cancel'.");
+            }
         }
     }
 }
