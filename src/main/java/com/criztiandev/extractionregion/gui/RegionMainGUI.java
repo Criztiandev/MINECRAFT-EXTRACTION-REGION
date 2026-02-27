@@ -73,6 +73,20 @@ public class RegionMainGUI {
         }
         inv.setItem(15, entryItem);
 
+        // Get Wands Button
+        ItemStack wandItem = new ItemStack(Material.STICK);
+        ItemMeta wandMeta = wandItem.getItemMeta();
+        if (wandMeta != null) {
+            wandMeta.setDisplayName("§d§lGet Region Wands");
+            wandMeta.setLore(Arrays.asList(
+                "§7Click to open the wand",
+                "§7selection menu."
+            ));
+            wandMeta.getPersistentDataContainer().set(new NamespacedKey(plugin, "region-main"), PersistentDataType.STRING, "wands");
+            wandItem.setItemMeta(wandMeta);
+        }
+        inv.setItem(22, wandItem);
+
         player.openInventory(inv);
     }
 }

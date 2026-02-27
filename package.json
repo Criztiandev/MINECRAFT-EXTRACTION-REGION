@@ -1,6 +1,6 @@
 {
   "name": "extraction-region-editor",
-  "version": "1.0.1",
+  "version": "1.0.4",
   "description": "Minecraft plugin development tooling for ExtractionRegionEditor",
   "private": true,
   "scripts": {

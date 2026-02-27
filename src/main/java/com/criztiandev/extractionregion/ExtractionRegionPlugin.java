@@ -43,7 +43,11 @@ public class ExtractionRegionPlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new RegionInventoryListener(this), this);
         getServer().getPluginManager().registerEvents(new RegionChatPromptListener(this), this);
         getServer().getPluginManager().registerEvents(new com.criztiandev.extractionregion.listeners.ExtractionMechanicsListener(this), this);
-        getCommand("regioneditor").setExecutor(new RegionCommand(this));
+        RegionCommand regionCommand = new RegionCommand(this);
+        if (getCommand("regioneditor") != null) getCommand("regioneditor").setExecutor(regionCommand);
+        if (getCommand("regionchest") != null) getCommand("regionchest").setExecutor(regionCommand);
+        if (getCommand("regionentry") != null) getCommand("regionentry").setExecutor(regionCommand);
+        if (getCommand("regionexit") != null) getCommand("regionexit").setExecutor(regionCommand);
 
         // Run the region tick manager every 60 seconds (1200 ticks)
         new RegionTickManager(this).runTaskTimer(this, 100L, 1200L);

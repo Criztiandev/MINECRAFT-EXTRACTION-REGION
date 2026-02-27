@@ -38,6 +38,21 @@ public class RegionCommand implements CommandExecutor {
             return true;
         }
 
+        if (command.getName().equalsIgnoreCase("regionchest")) {
+            new com.criztiandev.extractionregion.gui.RegionSubMenuGUI(plugin).openMenu(player, com.criztiandev.extractionregion.models.RegionType.CHEST_REPLENISH);
+            return true;
+        }
+
+        if (command.getName().equalsIgnoreCase("regionentry")) {
+            new com.criztiandev.extractionregion.gui.RegionSubMenuGUI(plugin).openMenu(player, com.criztiandev.extractionregion.models.RegionType.ENTRY_REGION);
+            return true;
+        }
+
+        if (command.getName().equalsIgnoreCase("regionexit")) {
+            new com.criztiandev.extractionregion.gui.RegionSubMenuGUI(plugin).openMenu(player, com.criztiandev.extractionregion.models.RegionType.EXTRACTION);
+            return true;
+        }
+
         if (args.length == 0) {
             new RegionMainGUI(plugin).openMenu(player);
             return true;
@@ -55,16 +70,7 @@ public class RegionCommand implements CommandExecutor {
         }
 
         if (args[0].equalsIgnoreCase("wand")) {
-            ItemStack wand = new ItemStack(Material.STICK);
-            ItemMeta meta = wand.getItemMeta();
-            if (meta != null) {
-                meta.setDisplayName("§dRegion Selection Wand");
-                meta.getPersistentDataContainer().set(new NamespacedKey(plugin, "region-wand"), PersistentDataType.BYTE, (byte) 1);
-                wand.setItemMeta(meta);
-            }
-            player.getInventory().addItem(wand);
-            player.sendMessage("§aYou have received the Region Selection Wand.");
-            player.sendMessage("§7Left-Click a block to set Pos1. Right-Click a block to set Pos2.");
+            new com.criztiandev.extractionregion.gui.WandMenuGUI(plugin).openMenu(player);
             return true;
         }
 

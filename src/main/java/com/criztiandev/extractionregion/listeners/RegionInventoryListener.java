@@ -39,6 +39,8 @@ public class RegionInventoryListener implements Listener {
                               title.startsWith(com.criztiandev.extractionregion.gui.ExtractionSettingsGUI.TITLE) ||
                               title.startsWith(com.criztiandev.extractionregion.gui.EntrySettingsGUI.TITLE) ||
                               title.startsWith(com.criztiandev.extractionregion.gui.RegionSubMenuGUI.TITLE_PREFIX) ||
+                              title.startsWith(com.criztiandev.extractionregion.gui.RegionChestsGUI.TITLE) ||
+                              title.equals(com.criztiandev.extractionregion.gui.WandMenuGUI.TITLE) ||
                               title.equals(plugin.getConfig().getString("region-gui.title", "§8▶ §dConfigure Auto Spawns").replace("&", "§"));
 
         if (!isRegionGUI) return;
@@ -54,7 +56,9 @@ public class RegionInventoryListener implements Listener {
         if (title.equals(RegionMainGUI.TITLE)) {
             if (data.has(new NamespacedKey(plugin, "region-main"), PersistentDataType.STRING)) {
                 String action = data.get(new NamespacedKey(plugin, "region-main"), PersistentDataType.STRING);
-                if ("cat_chest".equals(action)) {
+                if ("wands".equals(action)) {
+                    new com.criztiandev.extractionregion.gui.WandMenuGUI(plugin).openMenu(player);
+                } else if ("cat_chest".equals(action)) {
                     new com.criztiandev.extractionregion.gui.RegionSubMenuGUI(plugin).openMenu(player, com.criztiandev.extractionregion.models.RegionType.CHEST_REPLENISH);
                 } else if ("cat_extraction".equals(action)) {
                     new com.criztiandev.extractionregion.gui.RegionSubMenuGUI(plugin).openMenu(player, com.criztiandev.extractionregion.models.RegionType.EXTRACTION);
@@ -79,14 +83,40 @@ public class RegionInventoryListener implements Listener {
                     com.criztiandev.extractionregion.models.RegionType.valueOf(typeStr) : null;
                 
                 if ("wand".equals(action)) {
-                    player.chat("/lr wand");
                     player.closeInventory();
+                    if (type != null) {
+                        player.getInventory().addItem(com.criztiandev.extractionregion.utils.WandUtil.getWand(plugin, type));
+                        player.sendMessage("§aYou have received the " + type.name().replace("_", " ") + " Wand.");
+                    } else {
+                        new com.criztiandev.extractionregion.gui.WandMenuGUI(plugin).openMenu(player);
+                    }
                 } else if ("create".equals(action) && type != null) {
                     player.closeInventory();
                     plugin.getRegionManager().addCreatingPlayer(player.getUniqueId(), type);
                     player.sendMessage("§aPlease type the name of your new region in chat (or type 'cancel' to abort).");
                 } else if ("manage".equals(action) && type != null) {
                     new RegionListGUI(plugin).openMenu(player, 0, type);
+                }
+            }
+            return;
+        }
+
+        // Handle Wand Menu
+        if (title.equals(com.criztiandev.extractionregion.gui.WandMenuGUI.TITLE)) {
+            if (data.has(new NamespacedKey(plugin, "wand-menu-action"), PersistentDataType.STRING)) {
+                String action = data.get(new NamespacedKey(plugin, "wand-menu-action"), PersistentDataType.STRING);
+                if ("back".equals(action)) {
+                    new RegionMainGUI(plugin).openMenu(player);
+                    return;
+                }
+                
+                try {
+                    com.criztiandev.extractionregion.models.RegionType wandType = com.criztiandev.extractionregion.models.RegionType.valueOf(action);
+                    player.getInventory().addItem(com.criztiandev.extractionregion.utils.WandUtil.getWand(plugin, wandType));
+                    player.sendMessage("§aYou have received the " + wandType.name().replace("_", " ") + " Wand.");
+                    player.closeInventory();
+                } catch (IllegalArgumentException e) {
+                    // Not a valid RegionType enum name, skip
                 }
             }
             return;
@@ -169,6 +199,8 @@ public class RegionInventoryListener implements Listener {
                     player.getInventory().addItem(wand);
                     player.sendMessage("§aYou have received the Region Wand for §e" + regionId + "§a.");
                     player.closeInventory();
+                } else if ("manage_chests".equals(action)) {
+                    new com.criztiandev.extractionregion.gui.RegionChestsGUI(plugin).openMenu(player, region, 0);
                 } else if ("edit_extraction".equals(action)) {
                     new com.criztiandev.extractionregion.gui.ExtractionSettingsGUI(plugin).openMenu(player, region);
                 } else if ("edit_entry".equals(action)) {
@@ -281,6 +313,35 @@ public class RegionInventoryListener implements Listener {
                     else region.setBlindnessSeconds(0);
                     plugin.getRegionManager().saveRegion(region);
                     new com.criztiandev.extractionregion.gui.EntrySettingsGUI(plugin).openMenu(player, region);
+                }
+            }
+            return;
+        }
+
+        // Handle Region Chests
+        if (title.startsWith(com.criztiandev.extractionregion.gui.RegionChestsGUI.TITLE)) {
+            if (data.has(new NamespacedKey(plugin, "region-chests-action"), PersistentDataType.STRING)) {
+                String action = data.get(new NamespacedKey(plugin, "region-chests-action"), PersistentDataType.STRING);
+                String regionId = data.get(new NamespacedKey(plugin, "region-id"), PersistentDataType.STRING);
+                if (regionId == null) return;
+                SavedRegion region = plugin.getRegionManager().getRegion(regionId);
+                if (region == null) return;
+
+                if ("back".equals(action)) {
+                    new RegionActionGUI(plugin).openMenu(player, region);
+                } else if ("prev_page".equals(action) || "next_page".equals(action)) {
+                    int page = data.get(new NamespacedKey(plugin, "pagination-page"), PersistentDataType.INTEGER);
+                    new com.criztiandev.extractionregion.gui.RegionChestsGUI(plugin).openMenu(player, region, page);
+                } else if ("edit_chest".equals(action)) {
+                    String parentName = data.get(new NamespacedKey(plugin, "chest-parent"), PersistentDataType.STRING);
+                    if (parentName != null) {
+                        com.criztiandev.extractionchest.models.ParentChestDefinition def = plugin.getExtractionChestApi().getLootTableManager().getDefinition(parentName);
+                        if (def != null) {
+                            plugin.getExtractionChestApi().getChestSettingsGUI().openMenu(player, def, "chest-settings-main");
+                        } else {
+                            player.sendMessage("§cCould not find parent definition '" + parentName + "'.");
+                        }
+                    }
                 }
             }
             return;

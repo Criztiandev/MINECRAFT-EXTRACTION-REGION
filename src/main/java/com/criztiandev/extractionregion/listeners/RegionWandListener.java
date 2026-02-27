@@ -27,12 +27,14 @@ public class RegionWandListener implements Listener {
         Player player = event.getPlayer();
         ItemStack item = event.getItem();
 
-        if (item == null || item.getType() != Material.STICK || !item.hasItemMeta()) return;
+        if (item == null) return;
 
-        ItemMeta meta = item.getItemMeta();
-        if (!meta.getPersistentDataContainer().has(new NamespacedKey(plugin, "region-wand"), PersistentDataType.BYTE)) {
+        if (!com.criztiandev.extractionregion.utils.WandUtil.isWand(plugin, item) && 
+            !(item.hasItemMeta() && item.getItemMeta().getPersistentDataContainer().has(new NamespacedKey(plugin, "conduit-wand"), PersistentDataType.BYTE))) {
             return;
         }
+
+        ItemMeta meta = item.getItemMeta();
 
         if (!player.hasPermission("extractionchest.admin")) {
             return;

@@ -238,12 +238,30 @@ public class RegionActionGUI {
         }
         inv.setItem(15, deleteItem);
         
-        // Back Button (Slot 18)
+        // Manage Chests Button (Slot 16)
+        if (region.getType() == com.criztiandev.extractionregion.models.RegionType.CHEST_REPLENISH) {
+            ItemStack manageChestsItem = new ItemStack(Material.CHEST);
+            ItemMeta manageChestsMeta = manageChestsItem.getItemMeta();
+            if (manageChestsMeta != null) {
+                manageChestsMeta.setDisplayName("§6§lManage Chests");
+                manageChestsMeta.setLore(Arrays.asList(
+                    "§7Click to view all chests",
+                    "§7inside this region and",
+                    "§7configure their settings."
+                ));
+                manageChestsMeta.getPersistentDataContainer().set(new NamespacedKey(plugin, "region-action"), PersistentDataType.STRING, "manage_chests");
+                manageChestsMeta.getPersistentDataContainer().set(new NamespacedKey(plugin, "region-id"), PersistentDataType.STRING, region.getId());
+                manageChestsItem.setItemMeta(manageChestsMeta);
+            }
+            inv.setItem(16, manageChestsItem);
+        }
+        
         ItemStack backItem = new ItemStack(Material.ARROW);
         ItemMeta backMeta = backItem.getItemMeta();
         if (backMeta != null) {
             backMeta.setDisplayName("§cGo Back");
             backMeta.getPersistentDataContainer().set(new NamespacedKey(plugin, "region-action"), PersistentDataType.STRING, "back");
+            backMeta.getPersistentDataContainer().set(new NamespacedKey(plugin, "region-id"), PersistentDataType.STRING, region.getId());
             backItem.setItemMeta(backMeta);
         }
         inv.setItem(18, backItem);

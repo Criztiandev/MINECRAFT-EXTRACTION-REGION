@@ -12,3 +12,15 @@ commands:
     description: Main command for ExtractionRegionEditor.
     usage: /regioneditor [args]
     aliases: [re, lr]
+  regionchest:
+    description: Open the chest region menu.
+    usage: /regionchest
+    aliases: [lrc]
+  regionentry:
+    description: Open the entry region menu.
+    usage: /regionentry
+    aliases: [lre]
+  regionexit:
+    description: Open the extraction region menu.
+    usage: /regionexit
+    aliases: [lrex]

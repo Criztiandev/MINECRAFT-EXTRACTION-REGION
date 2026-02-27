@@ -37,16 +37,11 @@ public class RegionSubMenuGUI {
         for (int i = 0; i < 27; i++) inv.setItem(i, border);
 
         // Get Wand Button
-        ItemStack wandItem = new ItemStack(Material.STICK);
-        ItemMeta wandMeta = wandItem.getItemMeta();
+        org.bukkit.inventory.ItemStack wandItem = com.criztiandev.extractionregion.utils.WandUtil.getWand(plugin, type);
+        org.bukkit.inventory.meta.ItemMeta wandMeta = wandItem.getItemMeta();
         if (wandMeta != null) {
-            wandMeta.setDisplayName("§d§lGet Region Wand");
-            wandMeta.setLore(Arrays.asList(
-                "§7Click to receive the selection wand.",
-                "§7Left-click to set Position 1.",
-                "§7Right-click to set Position 2."
-            ));
-            wandMeta.getPersistentDataContainer().set(new NamespacedKey(plugin, "region-submenu"), PersistentDataType.STRING, "wand");
+            wandMeta.getPersistentDataContainer().set(new org.bukkit.NamespacedKey(plugin, "region-submenu"), org.bukkit.persistence.PersistentDataType.STRING, "wand");
+            wandMeta.getPersistentDataContainer().set(new org.bukkit.NamespacedKey(plugin, "region-type"), org.bukkit.persistence.PersistentDataType.STRING, type.name());
             wandItem.setItemMeta(wandMeta);
         }
         inv.setItem(11, wandItem);
