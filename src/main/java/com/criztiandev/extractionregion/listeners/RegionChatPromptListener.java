@@ -34,10 +34,17 @@ public class RegionChatPromptListener implements Listener {
                 return;
             }
 
+            // Retrieve intended type
+            com.criztiandev.extractionregion.models.RegionType type = plugin.getRegionManager().getCreatingPlayerType(player.getUniqueId());
+            String typeStr = "chest";
+            if (type == com.criztiandev.extractionregion.models.RegionType.EXTRACTION) typeStr = "extraction";
+            else if (type == com.criztiandev.extractionregion.models.RegionType.ENTRY_REGION) typeStr = "entry";
+
             // Execute creation command sync
+            String finalTypeStr = typeStr;
             Bukkit.getScheduler().runTask(plugin, () -> {
                 plugin.getRegionManager().removeCreatingPlayer(player.getUniqueId());
-                player.chat("/lr create " + input);
+                player.chat("/lr create " + input + " " + finalTypeStr);
             });
         }
     }

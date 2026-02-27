@@ -49,13 +49,32 @@ public class SQLiteRegionStorageProvider implements RegionStorageProvider {
             // Create Regions Table
             stmt.execute("CREATE TABLE IF NOT EXISTS regions (" +
                     "id TEXT PRIMARY KEY," +
+                    "type TEXT NOT NULL DEFAULT 'CHEST_REPLENISH'," +
                     "world TEXT NOT NULL," +
                     "min_x INTEGER NOT NULL," +
                     "max_x INTEGER NOT NULL," +
                     "min_z INTEGER NOT NULL," +
                     "max_z INTEGER NOT NULL," +
                     "next_reset_time INTEGER NOT NULL DEFAULT 0," +
-                    "reset_interval_minutes INTEGER NOT NULL DEFAULT 360" +
+                    "reset_interval_minutes INTEGER NOT NULL DEFAULT 360," +
+                    "conduit_world TEXT," +
+                    "conduit_x INTEGER," +
+                    "conduit_y INTEGER," +
+                    "conduit_z INTEGER," +
+                    "cooldown_minutes INTEGER NOT NULL DEFAULT 10," +
+                    "max_capacity INTEGER NOT NULL DEFAULT 5," +
+                    "min_capacity INTEGER NOT NULL DEFAULT 1," +
+                    "cooldown_end_time INTEGER NOT NULL DEFAULT 0," +
+                    "mimic_enabled INTEGER NOT NULL DEFAULT 1," +
+                    "drop_world TEXT," +
+                    "drop_min_x INTEGER," +
+                    "drop_max_x INTEGER," +
+                    "drop_min_y INTEGER," +
+                    "drop_max_y INTEGER," +
+                    "drop_min_z INTEGER," +
+                    "drop_max_z INTEGER," +
+                    "slow_falling_seconds INTEGER NOT NULL DEFAULT 10," +
+                    "blindness_seconds INTEGER NOT NULL DEFAULT 3" +
                     ");");
                     
             // Migration check: If table already existed without the new columns, add them.
@@ -70,6 +89,36 @@ public class SQLiteRegionStorageProvider implements RegionStorageProvider {
                 plugin.getLogger().info("Migrated database: added reset_interval_minutes to regions");
             } catch (SQLException ignored) {
                 // Column likely already exists
+            }
+            
+            // Extraction regions migration
+            String[] newColumns = {
+                "type TEXT NOT NULL DEFAULT 'CHEST_REPLENISH'",
+                "conduit_world TEXT",
+                "conduit_x INTEGER",
+                "conduit_y INTEGER",
+                "conduit_z INTEGER",
+                "cooldown_minutes INTEGER NOT NULL DEFAULT 10",
+                "max_capacity INTEGER NOT NULL DEFAULT 5",
+                "min_capacity INTEGER NOT NULL DEFAULT 1",
+                "cooldown_end_time INTEGER NOT NULL DEFAULT 0",
+                "mimic_enabled INTEGER NOT NULL DEFAULT 1",
+                "drop_world TEXT",
+                "drop_min_x INTEGER",
+                "drop_max_x INTEGER",
+                "drop_min_y INTEGER",
+                "drop_max_y INTEGER",
+                "drop_min_z INTEGER",
+                "drop_max_z INTEGER",
+                "slow_falling_seconds INTEGER NOT NULL DEFAULT 10",
+                "blindness_seconds INTEGER NOT NULL DEFAULT 3"
+            };
+            
+            for (String colDef : newColumns) {
+                try {
+                    stmt.execute("ALTER TABLE regions ADD COLUMN " + colDef);
+                    plugin.getLogger().info("Migrated database: added " + colDef.split(" ")[0] + " to regions");
+                } catch (SQLException ignored) {}
             }
 
             // Tables `region_auto_spawns` and `region_specific_locations` are deprecated
@@ -111,6 +160,36 @@ public class SQLiteRegionStorageProvider implements RegionStorageProvider {
                         SavedRegion region = new SavedRegion(id, world, minX, maxX, minZ, maxZ);
                         region.setNextResetTime(nextResetTime);
                         region.setResetIntervalMinutes(resetIntervalMinutes);
+                        
+                        try {
+                            region.setType(com.criztiandev.extractionregion.models.RegionType.valueOf(rs.getString("type")));
+                            region.setCooldownMinutes(rs.getInt("cooldown_minutes"));
+                            region.setMaxCapacity(rs.getInt("max_capacity"));
+                            region.setMinCapacity(rs.getInt("min_capacity"));
+                            region.setCooldownEndTime(rs.getLong("cooldown_end_time"));
+                            region.setMimicEnabled(rs.getInt("mimic_enabled") == 1);
+                            
+                            String conduitWorld = rs.getString("conduit_world");
+                            if (conduitWorld != null) {
+                                org.bukkit.World bWorld = org.bukkit.Bukkit.getWorld(conduitWorld);
+                                if (bWorld != null) {
+                                    region.setConduitLocation(new org.bukkit.Location(bWorld, rs.getInt("conduit_x"), rs.getInt("conduit_y"), rs.getInt("conduit_z")));
+                                }
+                            }
+                            
+                            region.setDropWorld(rs.getString("drop_world"));
+                            region.setDropMinX(rs.getInt("drop_min_x"));
+                            region.setDropMaxX(rs.getInt("drop_max_x"));
+                            region.setDropMinY(rs.getInt("drop_min_y"));
+                            region.setDropMaxY(rs.getInt("drop_max_y"));
+                            region.setDropMinZ(rs.getInt("drop_min_z"));
+                            region.setDropMaxZ(rs.getInt("drop_max_z"));
+                            region.setSlowFallingSeconds(rs.getInt("slow_falling_seconds"));
+                            region.setBlindnessSeconds(rs.getInt("blindness_seconds"));
+                        } catch (Exception e) {
+                            plugin.getLogger().warning("Could not load extraction fields for region " + id + ": " + e.getMessage());
+                        }
+                        
                         regions.add(region);
                     }
                 }
@@ -131,21 +210,57 @@ public class SQLiteRegionStorageProvider implements RegionStorageProvider {
                 try {
                     // 1. Upsert Region
                     try (PreparedStatement stmt = conn.prepareStatement(
-                            "INSERT INTO regions (id, world, min_x, max_x, min_z, max_z, next_reset_time, reset_interval_minutes) " +
-                            "VALUES (?, ?, ?, ?, ?, ?, ?, ?) " +
+                            "INSERT INTO regions (id, type, world, min_x, max_x, min_z, max_z, next_reset_time, reset_interval_minutes, conduit_world, conduit_x, conduit_y, conduit_z, cooldown_minutes, max_capacity, min_capacity, cooldown_end_time, mimic_enabled, drop_world, drop_min_x, drop_max_x, drop_min_y, drop_max_y, drop_min_z, drop_max_z, slow_falling_seconds, blindness_seconds) " +
+                            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) " +
                             "ON CONFLICT(id) DO UPDATE SET " +
-                            "world=excluded.world, min_x=excluded.min_x, max_x=excluded.max_x, " +
+                            "type=excluded.type, world=excluded.world, min_x=excluded.min_x, max_x=excluded.max_x, " +
                             "min_z=excluded.min_z, max_z=excluded.max_z, " +
-                            "next_reset_time=excluded.next_reset_time, reset_interval_minutes=excluded.reset_interval_minutes")) {
+                            "next_reset_time=excluded.next_reset_time, reset_interval_minutes=excluded.reset_interval_minutes, " +
+                            "conduit_world=excluded.conduit_world, conduit_x=excluded.conduit_x, conduit_y=excluded.conduit_y, conduit_z=excluded.conduit_z, " +
+                            "cooldown_minutes=excluded.cooldown_minutes, max_capacity=excluded.max_capacity, min_capacity=excluded.min_capacity, " +
+                            "cooldown_end_time=excluded.cooldown_end_time, mimic_enabled=excluded.mimic_enabled, " +
+                            "drop_world=excluded.drop_world, drop_min_x=excluded.drop_min_x, drop_max_x=excluded.drop_max_x, " +
+                            "drop_min_y=excluded.drop_min_y, drop_max_y=excluded.drop_max_y, drop_min_z=excluded.drop_min_z, drop_max_z=excluded.drop_max_z, " +
+                            "slow_falling_seconds=excluded.slow_falling_seconds, blindness_seconds=excluded.blindness_seconds")) {
                         
                         stmt.setString(1, region.getId());
-                        stmt.setString(2, region.getWorld());
-                        stmt.setInt(3, region.getMinX());
-                        stmt.setInt(4, region.getMaxX());
-                        stmt.setInt(5, region.getMinZ());
-                        stmt.setInt(6, region.getMaxZ());
-                        stmt.setLong(7, region.getNextResetTime());
-                        stmt.setInt(8, region.getResetIntervalMinutes());
+                        stmt.setString(2, region.getType().name());
+                        stmt.setString(3, region.getWorld());
+                        stmt.setInt(4, region.getMinX());
+                        stmt.setInt(5, region.getMaxX());
+                        stmt.setInt(6, region.getMinZ());
+                        stmt.setInt(7, region.getMaxZ());
+                        stmt.setLong(8, region.getNextResetTime());
+                        stmt.setInt(9, region.getResetIntervalMinutes());
+                        
+                        if (region.getConduitLocation() != null && region.getConduitLocation().getWorld() != null) {
+                            stmt.setString(10, region.getConduitLocation().getWorld().getName());
+                            stmt.setInt(11, region.getConduitLocation().getBlockX());
+                            stmt.setInt(12, region.getConduitLocation().getBlockY());
+                            stmt.setInt(13, region.getConduitLocation().getBlockZ());
+                        } else {
+                            stmt.setNull(10, java.sql.Types.VARCHAR);
+                            stmt.setNull(11, java.sql.Types.INTEGER);
+                            stmt.setNull(12, java.sql.Types.INTEGER);
+                            stmt.setNull(13, java.sql.Types.INTEGER);
+                        }
+                        
+                        stmt.setInt(14, region.getCooldownMinutes());
+                        stmt.setInt(15, region.getMaxCapacity());
+                        stmt.setInt(16, region.getMinCapacity());
+                        stmt.setLong(17, region.getCooldownEndTime());
+                        stmt.setInt(18, region.isMimicEnabled() ? 1 : 0);
+                        
+                        stmt.setString(19, region.getDropWorld());
+                        stmt.setInt(20, region.getDropMinX());
+                        stmt.setInt(21, region.getDropMaxX());
+                        stmt.setInt(22, region.getDropMinY());
+                        stmt.setInt(23, region.getDropMaxY());
+                        stmt.setInt(24, region.getDropMinZ());
+                        stmt.setInt(25, region.getDropMaxZ());
+                        stmt.setInt(26, region.getSlowFallingSeconds());
+                        stmt.setInt(27, region.getBlindnessSeconds());
+                        
                         stmt.executeUpdate();
                     }
 

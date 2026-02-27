@@ -102,3 +102,4 @@ whitelist.json
 banned-players.json
 banned-ips.json
 crash-reports/
+*.txt

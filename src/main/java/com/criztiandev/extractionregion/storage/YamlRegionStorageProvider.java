@@ -58,6 +58,41 @@ public class YamlRegionStorageProvider implements RegionStorageProvider {
 
                 SavedRegion region = new SavedRegion(id, world, minX, maxX, minZ, maxZ);
 
+                if (sec.contains("type")) {
+                    try {
+                        region.setType(com.criztiandev.extractionregion.models.RegionType.valueOf(sec.getString("type")));
+                    } catch (Exception ignored) {}
+                }
+                
+                if (sec.contains("conduit.world")) {
+                    org.bukkit.World cWorld = org.bukkit.Bukkit.getWorld(sec.getString("conduit.world"));
+                    if (cWorld != null) {
+                        region.setConduitLocation(new org.bukkit.Location(cWorld, 
+                            sec.getInt("conduit.x"), 
+                            sec.getInt("conduit.y"), 
+                            sec.getInt("conduit.z")));
+                    }
+                }
+                
+                if (sec.contains("cooldownMinutes")) region.setCooldownMinutes(sec.getInt("cooldownMinutes"));
+                if (sec.contains("maxCapacity")) region.setMaxCapacity(sec.getInt("maxCapacity"));
+                if (sec.contains("minCapacity")) region.setMinCapacity(sec.getInt("minCapacity"));
+                if (sec.contains("cooldownEndTime")) region.setCooldownEndTime(sec.getLong("cooldownEndTime"));
+                if (sec.contains("mimicEnabled")) region.setMimicEnabled(sec.getBoolean("mimicEnabled"));
+
+                if (sec.contains("drop")) {
+                    region.setDropWorld(sec.getString("drop.world"));
+                    region.setDropMinX(sec.getInt("drop.minX"));
+                    region.setDropMaxX(sec.getInt("drop.maxX"));
+                    region.setDropMinY(sec.getInt("drop.minY"));
+                    region.setDropMaxY(sec.getInt("drop.maxY"));
+                    region.setDropMinZ(sec.getInt("drop.minZ"));
+                    region.setDropMaxZ(sec.getInt("drop.maxZ"));
+                }
+                
+                if (sec.contains("slowFallingSeconds")) region.setSlowFallingSeconds(sec.getInt("slowFallingSeconds"));
+                if (sec.contains("blindnessSeconds")) region.setBlindnessSeconds(sec.getInt("blindnessSeconds"));
+
                 if (sec.contains("nextResetTime")) {
                     region.setNextResetTime(sec.getLong("nextResetTime"));
                 }
@@ -86,6 +121,37 @@ public class YamlRegionStorageProvider implements RegionStorageProvider {
             
             config.set(path + ".nextResetTime", region.getNextResetTime());
             config.set(path + ".resetIntervalMinutes", region.getResetIntervalMinutes());
+            
+            config.set(path + ".type", region.getType().name());
+            
+            if (region.getConduitLocation() != null && region.getConduitLocation().getWorld() != null) {
+                config.set(path + ".conduit.world", region.getConduitLocation().getWorld().getName());
+                config.set(path + ".conduit.x", region.getConduitLocation().getBlockX());
+                config.set(path + ".conduit.y", region.getConduitLocation().getBlockY());
+                config.set(path + ".conduit.z", region.getConduitLocation().getBlockZ());
+            } else {
+                config.set(path + ".conduit", null);
+            }
+            
+            config.set(path + ".cooldownMinutes", region.getCooldownMinutes());
+            config.set(path + ".maxCapacity", region.getMaxCapacity());
+            config.set(path + ".minCapacity", region.getMinCapacity());
+            config.set(path + ".cooldownEndTime", region.getCooldownEndTime());
+            config.set(path + ".mimicEnabled", region.isMimicEnabled());
+
+            if (region.getDropWorld() != null) {
+                config.set(path + ".drop.world", region.getDropWorld());
+                config.set(path + ".drop.minX", region.getDropMinX());
+                config.set(path + ".drop.maxX", region.getDropMaxX());
+                config.set(path + ".drop.minY", region.getDropMinY());
+                config.set(path + ".drop.maxY", region.getDropMaxY());
+                config.set(path + ".drop.minZ", region.getDropMinZ());
+                config.set(path + ".drop.maxZ", region.getDropMaxZ());
+            } else {
+                config.set(path + ".drop", null);
+            }
+            config.set(path + ".slowFallingSeconds", region.getSlowFallingSeconds());
+            config.set(path + ".blindnessSeconds", region.getBlindnessSeconds());
 
             try {
                 config.save(regionsFile);

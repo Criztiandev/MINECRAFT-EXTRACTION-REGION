@@ -48,6 +48,34 @@ public class RegionWandListener implements Listener {
         Block block = event.getClickedBlock();
 
         if (block == null) return;
+        
+        // Handle Conduit Selector Wand
+        if (meta.getPersistentDataContainer().has(new NamespacedKey(plugin, "conduit-wand"), PersistentDataType.BYTE)) {
+            event.setCancelled(true);
+            if (action == Action.RIGHT_CLICK_BLOCK) {
+                String regionId = meta.getPersistentDataContainer().get(new NamespacedKey(plugin, "region-id"), PersistentDataType.STRING);
+                if (regionId == null) return;
+                
+                com.criztiandev.extractionregion.models.SavedRegion region = plugin.getRegionManager().getRegion(regionId);
+                if (region == null) {
+                    player.sendMessage("§cRegion not found.");
+                    return;
+                }
+                
+                // Bounds check
+                if (block.getX() >= region.getMinX() && block.getX() <= region.getMaxX() &&
+                    block.getZ() >= region.getMinZ() && block.getZ() <= region.getMaxZ() &&
+                    block.getWorld().getName().equals(region.getWorld())) {
+                    
+                    region.setConduitLocation(block.getLocation());
+                    plugin.getRegionManager().saveRegion(region);
+                    player.sendMessage("§aConduit extraction point set for region §e" + regionId + "§a!");
+                } else {
+                    player.sendMessage("§cThe conduit block must be inside the region boundaries!");
+                }
+            }
+            return;
+        }
 
         if (action == Action.LEFT_CLICK_BLOCK) {
             event.setCancelled(true);

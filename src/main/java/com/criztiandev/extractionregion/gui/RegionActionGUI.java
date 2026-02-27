@@ -48,32 +48,57 @@ public class RegionActionGUI {
         if (overviewMeta != null) {
             overviewMeta.setDisplayName("§b§lRegion Overview");
             
-            // Calculate captured chests dynamically
-            int totalChests = 0;
-            java.util.Map<String, Integer> tierCounts = new java.util.HashMap<>();
-            for (com.criztiandev.extractionchest.models.ChestInstance inst : plugin.getExtractionChestApi().getChestInstanceManager().getAllInstances()) {
-                if (inst.getWorld().equals(region.getWorld())) {
-                    org.bukkit.Location loc = inst.getLocation(org.bukkit.Bukkit.getWorld(inst.getWorld()));
-                    if (loc.getBlockX() >= region.getMinX() && loc.getBlockX() <= region.getMaxX() &&
-                        loc.getBlockZ() >= region.getMinZ() && loc.getBlockZ() <= region.getMaxZ()) {
-                        totalChests++;
-                        tierCounts.put(inst.getParentName(), tierCounts.getOrDefault(inst.getParentName(), 0) + 1);
+            if (region.getType() == com.criztiandev.extractionregion.models.RegionType.EXTRACTION) {
+                java.util.List<String> lore = new java.util.ArrayList<>(Arrays.asList(
+                    "§7This region serves as an",
+                    "§7Extraction Point for players.",
+                    "",
+                    "§eConduit Location: §f" + (region.getConduitLocation() != null ? "Set" : "Not Set"),
+                    "§eCooldown: §f" + region.getCooldownMinutes() + " Minutes",
+                    "§eCapacity: §f" + region.getMinCapacity() + " - " + region.getMaxCapacity() + " Players",
+                    "§eMimics Enabled: §f" + (region.isMimicEnabled() ? "Yes" : "No")
+                ));
+                overviewMeta.setLore(lore);
+            } else if (region.getType() == com.criztiandev.extractionregion.models.RegionType.ENTRY_REGION) {
+                java.util.List<String> lore = new java.util.ArrayList<>(Arrays.asList(
+                    "§7This region serves as a",
+                    "§7designated Entry/Spawn zone.",
+                    "",
+                    "§eDrop Zone: " + (region.getDropWorld() != null ? 
+                        "§f" + region.getDropMinX() + " to " + region.getDropMaxX() + " (X), " + region.getDropMinZ() + " to " + region.getDropMaxZ() + " (Z)" : 
+                        "§cNot Set"),
+                    "§eSlow Falling: §f" + region.getSlowFallingSeconds() + "s",
+                    "§eBlindness: §f" + region.getBlindnessSeconds() + "s"
+                ));
+                overviewMeta.setLore(lore);
+            } else {
+                // Calculate captured chests dynamically
+                int totalChests = 0;
+                java.util.Map<String, Integer> tierCounts = new java.util.HashMap<>();
+                for (com.criztiandev.extractionchest.models.ChestInstance inst : plugin.getExtractionChestApi().getChestInstanceManager().getAllInstances()) {
+                    if (inst.getWorld().equals(region.getWorld())) {
+                        org.bukkit.Location loc = inst.getLocation(org.bukkit.Bukkit.getWorld(inst.getWorld()));
+                        if (loc.getBlockX() >= region.getMinX() && loc.getBlockX() <= region.getMaxX() &&
+                            loc.getBlockZ() >= region.getMinZ() && loc.getBlockZ() <= region.getMaxZ()) {
+                            totalChests++;
+                            tierCounts.put(inst.getParentName(), tierCounts.getOrDefault(inst.getParentName(), 0) + 1);
+                        }
                     }
                 }
+                
+                java.util.List<String> lore = new java.util.ArrayList<>(Arrays.asList(
+                    "§7This region contains manually",
+                    "§7placed Extraction Chests.",
+                    "",
+                    "§e§lCaptured Chests: §f" + totalChests
+                ));
+                
+                for (java.util.Map.Entry<String, Integer> entry : tierCounts.entrySet()) {
+                    lore.add("§8- §7" + entry.getKey() + ": §f" + entry.getValue());
+                }
+                
+                overviewMeta.setLore(lore);
             }
-            
-            java.util.List<String> lore = new java.util.ArrayList<>(Arrays.asList(
-                "§7This region contains manually",
-                "§7placed Extraction Chests.",
-                "",
-                "§e§lCaptured Chests: §f" + totalChests
-            ));
-            
-            for (java.util.Map.Entry<String, Integer> entry : tierCounts.entrySet()) {
-                lore.add("§8- §7" + entry.getKey() + ": §f" + entry.getValue());
-            }
-            
-            overviewMeta.setLore(lore);
             overviewItem.setItemMeta(overviewMeta);
         }
         inv.setItem(11, overviewItem);
@@ -94,42 +119,109 @@ public class RegionActionGUI {
         }
         inv.setItem(12, getWandItem);
 
-        // 3. Force Replenish Button (Slot 13 - Center)
-        ItemStack forceItem = new ItemStack(Material.EMERALD_BLOCK);
-        ItemMeta forceMeta = forceItem.getItemMeta();
-        if (forceMeta != null) {
-            forceMeta.setDisplayName("§a§lForce Replenish Now");
-            forceMeta.setLore(Arrays.asList(
-                "§7Click to immediately refill",
-                "§7and reset all chests",
-                "§7captured inside this region."
-            ));
-            forceMeta.getPersistentDataContainer().set(new NamespacedKey(plugin, "region-action"), PersistentDataType.STRING, "force");
-            forceMeta.getPersistentDataContainer().set(new NamespacedKey(plugin, "region-id"), PersistentDataType.STRING, region.getId());
-            forceItem.setItemMeta(forceMeta);
+        // 3. Center Action Button (Slot 13)
+        if (region.getType() == com.criztiandev.extractionregion.models.RegionType.EXTRACTION) {
+            ItemStack conduitItem = new ItemStack(Material.END_ROD);
+            ItemMeta conduitMeta = conduitItem.getItemMeta();
+            if (conduitMeta != null) {
+                conduitMeta.setDisplayName("§b§lSet Conduit Block");
+                conduitMeta.setLore(Arrays.asList(
+                    "§7Click this to receive a",
+                    "§7§bConduit Selector Tool§7.",
+                    "§7Use it to right-click the",
+                    "§7block players must look",
+                    "§7at to extract."
+                ));
+                conduitMeta.getPersistentDataContainer().set(new NamespacedKey(plugin, "region-action"), PersistentDataType.STRING, "set_conduit");
+                conduitMeta.getPersistentDataContainer().set(new NamespacedKey(plugin, "region-id"), PersistentDataType.STRING, region.getId());
+                conduitItem.setItemMeta(conduitMeta);
+            }
+            inv.setItem(13, conduitItem);
+        } else if (region.getType() == com.criztiandev.extractionregion.models.RegionType.CHEST_REPLENISH) {
+            ItemStack forceItem = new ItemStack(Material.EMERALD_BLOCK);
+            ItemMeta forceMeta = forceItem.getItemMeta();
+            if (forceMeta != null) {
+                forceMeta.setDisplayName("§a§lForce Replenish Now");
+                forceMeta.setLore(Arrays.asList(
+                    "§7Click to immediately refill",
+                    "§7and reset all chests",
+                    "§7captured inside this region."
+                ));
+                forceMeta.getPersistentDataContainer().set(new NamespacedKey(plugin, "region-action"), PersistentDataType.STRING, "force");
+                forceMeta.getPersistentDataContainer().set(new NamespacedKey(plugin, "region-id"), PersistentDataType.STRING, region.getId());
+                forceItem.setItemMeta(forceMeta);
+            }
+            inv.setItem(13, forceItem);
+        } else if (region.getType() == com.criztiandev.extractionregion.models.RegionType.ENTRY_REGION) {
+            ItemStack dropZoneItem = new ItemStack(Material.ENDER_EYE);
+            ItemMeta dropZoneMeta = dropZoneItem.getItemMeta();
+            if (dropZoneMeta != null) {
+                dropZoneMeta.setDisplayName("§b§lSet Drop Zone");
+                dropZoneMeta.setLore(Arrays.asList(
+                    "§7Select an area using the",
+                    "§7Region Wand, then click here",
+                    "§7to save it as the Drop Zone",
+                    "§7for this Entry portal."
+                ));
+                dropZoneMeta.getPersistentDataContainer().set(new NamespacedKey(plugin, "region-action"), PersistentDataType.STRING, "set_dropzone");
+                dropZoneMeta.getPersistentDataContainer().set(new NamespacedKey(plugin, "region-id"), PersistentDataType.STRING, region.getId());
+                dropZoneItem.setItemMeta(dropZoneMeta);
+            }
+            inv.setItem(13, dropZoneItem);
         }
-        inv.setItem(13, forceItem);
 
-        // 4. Respawn Timer Button (Slot 14)
-        ItemStack timerItem = new ItemStack(Material.CLOCK);
-        ItemMeta timerMeta = timerItem.getItemMeta();
-        if (timerMeta != null) {
-            timerMeta.setDisplayName("§e§lTimer Config");
-            int hours = region.getResetIntervalMinutes() / 60;
-            String timeDisplay = (hours > 0) ? hours + " Hours" : region.getResetIntervalMinutes() + " Minutes";
-            timerMeta.setLore(Arrays.asList(
-                "§7Cron Schedule: Every §f" + timeDisplay,
-                "§7(Syncs relative to 12 AM PH Time)",
-                "",
-                "§eClick to cycle the timer",
-                "§ethat auto-replenishes chests",
-                "§einside this region."
-            ));
-            timerMeta.getPersistentDataContainer().set(new NamespacedKey(plugin, "region-action"), PersistentDataType.STRING, "timer");
-            timerMeta.getPersistentDataContainer().set(new NamespacedKey(plugin, "region-id"), PersistentDataType.STRING, region.getId());
-            timerItem.setItemMeta(timerMeta);
+        // 4. Settings/Timer Button (Slot 14)
+        if (region.getType() == com.criztiandev.extractionregion.models.RegionType.EXTRACTION) {
+            ItemStack editItem = new ItemStack(Material.REPEATER);
+            ItemMeta editMeta = editItem.getItemMeta();
+            if (editMeta != null) {
+                editMeta.setDisplayName("§e§lExtraction Settings");
+                editMeta.setLore(Arrays.asList(
+                    "§7Click to configure",
+                    "§7Cooldown, Capacity RNG,",
+                    "§7and Mimic parameters."
+                ));
+                editMeta.getPersistentDataContainer().set(new NamespacedKey(plugin, "region-action"), PersistentDataType.STRING, "edit_extraction");
+                editMeta.getPersistentDataContainer().set(new NamespacedKey(plugin, "region-id"), PersistentDataType.STRING, region.getId());
+                editItem.setItemMeta(editMeta);
+            }
+            inv.setItem(14, editItem);
+        } else if (region.getType() == com.criztiandev.extractionregion.models.RegionType.CHEST_REPLENISH) {
+            ItemStack timerItem = new ItemStack(Material.CLOCK);
+            ItemMeta timerMeta = timerItem.getItemMeta();
+            if (timerMeta != null) {
+                timerMeta.setDisplayName("§e§lTimer Config");
+                int hours = region.getResetIntervalMinutes() / 60;
+                String timeDisplay = (hours > 0) ? hours + " Hours" : region.getResetIntervalMinutes() + " Minutes";
+                timerMeta.setLore(Arrays.asList(
+                    "§7Cron Schedule: Every §f" + timeDisplay,
+                    "§7(Syncs relative to 12 AM PH Time)",
+                    "",
+                    "§eClick to cycle the timer",
+                    "§ethat auto-replenishes chests",
+                    "§einside this region."
+                ));
+                timerMeta.getPersistentDataContainer().set(new NamespacedKey(plugin, "region-action"), PersistentDataType.STRING, "timer");
+                timerMeta.getPersistentDataContainer().set(new NamespacedKey(plugin, "region-id"), PersistentDataType.STRING, region.getId());
+                timerItem.setItemMeta(timerMeta);
+            }
+            inv.setItem(14, timerItem);
+        } else if (region.getType() == com.criztiandev.extractionregion.models.RegionType.ENTRY_REGION) {
+            ItemStack settingsItem = new ItemStack(Material.REPEATER);
+            ItemMeta settingsMeta = settingsItem.getItemMeta();
+            if (settingsMeta != null) {
+                settingsMeta.setDisplayName("§e§lEntry Settings");
+                settingsMeta.setLore(Arrays.asList(
+                    "§7Click to configure",
+                    "§7Slow Falling and Blindness",
+                    "§7potion effect durations."
+                ));
+                settingsMeta.getPersistentDataContainer().set(new NamespacedKey(plugin, "region-action"), PersistentDataType.STRING, "edit_entry");
+                settingsMeta.getPersistentDataContainer().set(new NamespacedKey(plugin, "region-id"), PersistentDataType.STRING, region.getId());
+                settingsItem.setItemMeta(settingsMeta);
+            }
+            inv.setItem(14, settingsItem);
         }
-        inv.setItem(14, timerItem);
 
         // 5. Delete Region Button (Slot 15)
         ItemStack deleteItem = new ItemStack(Material.BARRIER);

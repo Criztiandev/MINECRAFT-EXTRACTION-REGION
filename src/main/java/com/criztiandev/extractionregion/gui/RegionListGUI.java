@@ -23,9 +23,16 @@ public class RegionListGUI {
         this.plugin = plugin;
     }
 
-    public void openMenu(Player player, int page) {
-        List<SavedRegion> regions = new java.util.ArrayList<>(plugin.getRegionManager().getRegions());
-        
+    public void openMenu(Player player, int page, com.criztiandev.extractionregion.models.RegionType filterType) {
+        List<SavedRegion> allRegions = new java.util.ArrayList<>(plugin.getRegionManager().getRegions());
+        List<SavedRegion> regions = new java.util.ArrayList<>();
+        if (filterType != null) {
+            for (SavedRegion r : allRegions) {
+                if (r.getType() == filterType) regions.add(r);
+            }
+        } else {
+            regions.addAll(allRegions);
+        }
         Inventory inv = Bukkit.createInventory(null, 54, TITLE);
         
         ItemStack border = new ItemStack(Material.BLACK_STAINED_GLASS_PANE);
@@ -43,10 +50,16 @@ public class RegionListGUI {
         int slot = 0;
         for (int i = startIndex; i < endIndex; i++) {
             SavedRegion region = regions.get(i);
-            ItemStack item = new ItemStack(Material.GRASS_BLOCK); // Representing a region
+            
+            boolean isExtraction = region.getType() == com.criztiandev.extractionregion.models.RegionType.EXTRACTION;
+            boolean isEntry = region.getType() == com.criztiandev.extractionregion.models.RegionType.ENTRY_REGION;
+            Material mat = isEntry ? Material.IRON_DOOR : (isExtraction ? Material.BEACON : Material.GRASS_BLOCK);
+            String prefix = isEntry ? "§a[Entry] " : (isExtraction ? "§e[Extraction] §a" : "§a[Chest] ");
+            
+            ItemStack item = new ItemStack(mat); // Representing a region
             ItemMeta meta = item.getItemMeta();
             if (meta != null) {
-                meta.setDisplayName("§a" + region.getId());
+                meta.setDisplayName(prefix + region.getId());
                 meta.setLore(Arrays.asList(
                     "§7World: §f" + region.getWorld(),
                     "§7Pos1: §f" + region.getMinX() + ", " + region.getMinZ(),
@@ -60,6 +73,19 @@ public class RegionListGUI {
             inv.setItem(slot++, item);
         }
 
+        // Back button
+        ItemStack back = new ItemStack(Material.OAK_DOOR);
+        ItemMeta bmkn = back.getItemMeta();
+        if (bmkn != null) {
+            bmkn.setDisplayName("§cGo Back");
+            bmkn.getPersistentDataContainer().set(new NamespacedKey(plugin, "list-back"), PersistentDataType.STRING, "true");
+            if (filterType != null) {
+                bmkn.getPersistentDataContainer().set(new NamespacedKey(plugin, "pagination-filter"), PersistentDataType.STRING, filterType.name());
+            }
+            back.setItemMeta(bmkn);
+        }
+        inv.setItem(49, back);
+
         // Pagination buttons
         if (page > 0) {
             ItemStack prev = new ItemStack(Material.ARROW);
@@ -67,6 +93,9 @@ public class RegionListGUI {
             if (pm != null) {
                 pm.setDisplayName("§cPrevious Page");
                 pm.getPersistentDataContainer().set(new org.bukkit.NamespacedKey(plugin, "pagination-page"), org.bukkit.persistence.PersistentDataType.INTEGER, page - 1);
+                if (filterType != null) {
+                    pm.getPersistentDataContainer().set(new org.bukkit.NamespacedKey(plugin, "pagination-filter"), org.bukkit.persistence.PersistentDataType.STRING, filterType.name());
+                }
                 prev.setItemMeta(pm);
             }
             inv.setItem(45, prev);
@@ -78,6 +107,9 @@ public class RegionListGUI {
             if (nm != null) {
                 nm.setDisplayName("§aNext Page");
                 nm.getPersistentDataContainer().set(new org.bukkit.NamespacedKey(plugin, "pagination-page"), org.bukkit.persistence.PersistentDataType.INTEGER, page + 1);
+                if (filterType != null) {
+                    nm.getPersistentDataContainer().set(new org.bukkit.NamespacedKey(plugin, "pagination-filter"), org.bukkit.persistence.PersistentDataType.STRING, filterType.name());
+                }
                 next.setItemMeta(nm);
             }
             inv.setItem(53, next);

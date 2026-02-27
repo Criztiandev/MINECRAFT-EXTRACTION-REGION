@@ -32,51 +32,46 @@ public class RegionMainGUI {
         }
         for (int i = 0; i < 27; i++) inv.setItem(i, border);
 
-        // Get Wand Button
-        ItemStack wandItem = new ItemStack(Material.STICK);
-        ItemMeta wandMeta = wandItem.getItemMeta();
-        if (wandMeta != null) {
-            wandMeta.setDisplayName("§d§lGet Region Wand");
-            wandMeta.setLore(Arrays.asList(
-                "§7Click to receive the selection wand.",
-                "§7Left-click to set Position 1.",
-                "§7Right-click to set Position 2."
+        // Chest Region Button
+        ItemStack chestItem = new ItemStack(Material.CHEST);
+        ItemMeta chestMeta = chestItem.getItemMeta();
+        if (chestMeta != null) {
+            chestMeta.setDisplayName("§6§lChest Regions");
+            chestMeta.setLore(Arrays.asList(
+                "§7Manage regions that automatically",
+                "§7replenish loot chests inside."
             ));
-            wandMeta.getPersistentDataContainer().set(new NamespacedKey(plugin, "region-main"), PersistentDataType.STRING, "wand");
-            wandItem.setItemMeta(wandMeta);
+            chestMeta.getPersistentDataContainer().set(new NamespacedKey(plugin, "region-main"), PersistentDataType.STRING, "cat_chest");
+            chestItem.setItemMeta(chestMeta);
         }
-        inv.setItem(11, wandItem);
+        inv.setItem(11, chestItem);
 
-        // Create Region Button
-        ItemStack createItem = new ItemStack(Material.EMERALD_BLOCK);
-        ItemMeta createMeta = createItem.getItemMeta();
-        if (createMeta != null) {
-            createMeta.setDisplayName("§a§lCreate Region");
-            createMeta.setLore(Arrays.asList(
-                "§7Click to create a new region",
-                "§7from your current wand selection.",
-                "§7You will be prompted to type",
-                "§7the Region ID in chat."
+        // Extraction Region Button
+        ItemStack extItem = new ItemStack(Material.BEACON);
+        ItemMeta extMeta = extItem.getItemMeta();
+        if (extMeta != null) {
+            extMeta.setDisplayName("§b§lExtraction Regions");
+            extMeta.setLore(Arrays.asList(
+                "§7Manage regions where players",
+                "§7can extract to safety with loot."
             ));
-            createMeta.getPersistentDataContainer().set(new NamespacedKey(plugin, "region-main"), PersistentDataType.STRING, "create");
-            createItem.setItemMeta(createMeta);
+            extMeta.getPersistentDataContainer().set(new NamespacedKey(plugin, "region-main"), PersistentDataType.STRING, "cat_extraction");
+            extItem.setItemMeta(extMeta);
         }
-        inv.setItem(13, createItem);
+        inv.setItem(13, extItem);
 
-        // Manage Regions Button
-        ItemStack manageItem = new ItemStack(Material.BOOK);
-        ItemMeta manageMeta = manageItem.getItemMeta();
-        if (manageMeta != null) {
-            manageMeta.setDisplayName("§e§lManage Regions");
-            manageMeta.setLore(Arrays.asList(
-                "§7Click to view a list of all",
-                "§7Extraction Regions, configure",
-                "§7auto-spawns, and delete them."
+        // Entry Region Button
+        ItemStack entryItem = new ItemStack(Material.IRON_DOOR);
+        ItemMeta entryMeta = entryItem.getItemMeta();
+        if (entryMeta != null) {
+            entryMeta.setDisplayName("§a§lEntry Regions");
+            entryMeta.setLore(Arrays.asList(
+                "§7Manage entry or spawn zones."
             ));
-            manageMeta.getPersistentDataContainer().set(new NamespacedKey(plugin, "region-main"), PersistentDataType.STRING, "manage");
-            manageItem.setItemMeta(manageMeta);
+            entryMeta.getPersistentDataContainer().set(new NamespacedKey(plugin, "region-main"), PersistentDataType.STRING, "cat_entry");
+            entryItem.setItemMeta(entryMeta);
         }
-        inv.setItem(15, manageItem);
+        inv.setItem(15, entryItem);
 
         player.openInventory(inv);
     }

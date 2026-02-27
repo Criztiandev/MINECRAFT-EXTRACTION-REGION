@@ -46,7 +46,7 @@ public class RegionCommand implements CommandExecutor {
         if (args[0].equalsIgnoreCase("help")) {
             player.sendMessage("§eExtractionRegionEditor Commands:");
             player.sendMessage("§7/lr wand §f- Get the region selection wand.");
-            player.sendMessage("§7/lr create <id> §f- Create a region from your selection.");
+            player.sendMessage("§7/lr create <id> [chest/extraction/entry] §f- Create a region.");
             player.sendMessage("§7/lr delete <id> §f- Delete an existing region.");
             player.sendMessage("§7/lr rename <old_id> <new_id> §f- Rename a region.");
             player.sendMessage("§7/lr list §f- Open the region management GUI.");
@@ -70,7 +70,7 @@ public class RegionCommand implements CommandExecutor {
 
         if (args[0].equalsIgnoreCase("create")) {
             if (args.length < 2) {
-                player.sendMessage("§cUsage: /lr create <id>");
+                player.sendMessage("§cUsage: /lr create <id> [chest/extraction/entry]");
                 return true;
             }
 
@@ -78,6 +78,18 @@ public class RegionCommand implements CommandExecutor {
             if (plugin.getRegionManager().getRegion(id) != null) {
                 player.sendMessage("§cA region with that ID already exists.");
                 return true;
+            }
+
+            com.criztiandev.extractionregion.models.RegionType type = com.criztiandev.extractionregion.models.RegionType.CHEST_REPLENISH;
+            if (args.length >= 3) {
+                if (args[2].equalsIgnoreCase("extraction")) {
+                    type = com.criztiandev.extractionregion.models.RegionType.EXTRACTION;
+                } else if (args[2].equalsIgnoreCase("entry")) {
+                    type = com.criztiandev.extractionregion.models.RegionType.ENTRY_REGION;
+                } else if (!args[2].equalsIgnoreCase("chest")) {
+                    player.sendMessage("§cInvalid region type. Use 'chest', 'extraction', or 'entry'.");
+                    return true;
+                }
             }
 
             RegionSelection sel = plugin.getRegionManager().getOrCreateSelection(player.getUniqueId());
@@ -98,9 +110,10 @@ public class RegionCommand implements CommandExecutor {
             String world = sel.getPos1().getWorld().getName();
 
             SavedRegion region = new SavedRegion(id, world, minX, maxX, minZ, maxZ);
+            region.setType(type);
             plugin.getRegionManager().saveRegion(region);
 
-            player.sendMessage("§aRegion §e" + id + " §acreated successfully.");
+            player.sendMessage("§aRegion §e" + id + " §a(" + type.name() + ") created successfully.");
             plugin.getRegionManager().removeSelection(player.getUniqueId());
             new RegionActionGUI(plugin).openMenu(player, region);
             return true;
@@ -156,7 +169,7 @@ public class RegionCommand implements CommandExecutor {
         }
 
         if (args[0].equalsIgnoreCase("list")) {
-            new RegionListGUI(plugin).openMenu(player, 0);
+            new RegionListGUI(plugin).openMenu(player, 0, null);
             return true;
         }
 

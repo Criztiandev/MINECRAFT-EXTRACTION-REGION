@@ -12,13 +12,14 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CompletableFuture;
+import com.criztiandev.extractionregion.models.RegionType;
 
 public class RegionManager {
 
     private final ExtractionRegionPlugin plugin;
     private final Map<UUID, RegionSelection> selections = new HashMap<>();
     private final Map<String, SavedRegion> regions = new ConcurrentHashMap<>();
-    private final Set<UUID> creatingPlayers = new HashSet<>();
+    private final Map<UUID, RegionType> creatingPlayers = new ConcurrentHashMap<>();
 
     public RegionManager(ExtractionRegionPlugin plugin) {
         this.plugin = plugin;
@@ -141,12 +142,16 @@ public class RegionManager {
         selections.remove(uuid);
     }
 
-    public void addCreatingPlayer(UUID uuid) {
-        creatingPlayers.add(uuid);
+    public void addCreatingPlayer(UUID uuid, RegionType type) {
+        creatingPlayers.put(uuid, type);
     }
 
     public boolean isCreatingPlayer(UUID uuid) {
-        return creatingPlayers.contains(uuid);
+        return creatingPlayers.containsKey(uuid);
+    }
+    
+    public RegionType getCreatingPlayerType(UUID uuid) {
+        return creatingPlayers.get(uuid);
     }
 
     public void removeCreatingPlayer(UUID uuid) {

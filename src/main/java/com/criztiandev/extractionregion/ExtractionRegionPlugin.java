@@ -18,6 +18,8 @@ public class ExtractionRegionPlugin extends JavaPlugin {
     private RegionStorageProvider storageProvider;
     private RegionManager regionManager;
     private SelectionVisualizerTask visualizerTask;
+    private com.criztiandev.extractionregion.tasks.ExtractionTask extractionTask;
+    private com.criztiandev.extractionregion.tasks.EntryTask entryTask;
 
     @Override
     public void onEnable() {
@@ -40,6 +42,7 @@ public class ExtractionRegionPlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new RegionWandListener(this), this);
         getServer().getPluginManager().registerEvents(new RegionInventoryListener(this), this);
         getServer().getPluginManager().registerEvents(new RegionChatPromptListener(this), this);
+        getServer().getPluginManager().registerEvents(new com.criztiandev.extractionregion.listeners.ExtractionMechanicsListener(this), this);
         getCommand("regioneditor").setExecutor(new RegionCommand(this));
 
         // Run the region tick manager every 60 seconds (1200 ticks)
@@ -48,6 +51,14 @@ public class ExtractionRegionPlugin extends JavaPlugin {
         // Run the selection visualizer every 10 ticks (0.5 seconds)
         this.visualizerTask = new SelectionVisualizerTask(this);
         this.visualizerTask.runTaskTimer(this, 10L, 10L);
+        
+        // Run the extraction checking task every 5 ticks (0.25 seconds)
+        this.extractionTask = new com.criztiandev.extractionregion.tasks.ExtractionTask(this);
+        this.extractionTask.runTaskTimer(this, 5L, 5L);
+
+        // Run the entry portal task every 10 ticks (0.5 seconds)
+        this.entryTask = new com.criztiandev.extractionregion.tasks.EntryTask(this);
+        getServer().getScheduler().runTaskTimer(this, this.entryTask, 10L, 10L);
     }
 
     @Override
@@ -71,6 +82,10 @@ public class ExtractionRegionPlugin extends JavaPlugin {
 
     public RegionManager getRegionManager() {
         return regionManager;
+    }
+    
+    public com.criztiandev.extractionregion.tasks.ExtractionTask getExtractionTask() {
+        return extractionTask;
     }
 }
 
