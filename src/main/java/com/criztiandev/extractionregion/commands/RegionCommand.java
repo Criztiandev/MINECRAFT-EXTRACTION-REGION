@@ -59,6 +59,18 @@ public class RegionCommand implements CommandExecutor {
         }
 
         if (command.getName().equalsIgnoreCase("regionexit")) {
+            if (args.length > 0 && args[0].equalsIgnoreCase("spawn")) {
+                org.bukkit.Location loc = player.getLocation();
+                plugin.getConfig().set("extraction.spawn.world", loc.getWorld().getName());
+                plugin.getConfig().set("extraction.spawn.x", loc.getX());
+                plugin.getConfig().set("extraction.spawn.y", loc.getY());
+                plugin.getConfig().set("extraction.spawn.z", loc.getZ());
+                plugin.getConfig().set("extraction.spawn.yaw", (double) loc.getYaw());
+                plugin.getConfig().set("extraction.spawn.pitch", (double) loc.getPitch());
+                plugin.saveConfig();
+                player.sendMessage("§aExtraction spawn point set to your current location!");
+                return true;
+            }
             if (args.length > 0 && args[0].equalsIgnoreCase("create")) {
                 plugin.getRegionManager().addCreatingPlayer(player.getUniqueId(), com.criztiandev.extractionregion.models.RegionType.EXTRACTION);
                 player.sendMessage("§aPlease type the name of your new region in chat (or type 'cancel' to abort).");
@@ -67,6 +79,8 @@ public class RegionCommand implements CommandExecutor {
             }
             return true;
         }
+
+
 
         if (args.length == 0) {
             new RegionMainGUI(plugin).openMenu(player);

@@ -10,6 +10,8 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
+import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.event.block.Action;
 
 public class ExtractionMechanicsListener implements Listener {
 
@@ -64,6 +66,36 @@ public class ExtractionMechanicsListener implements Listener {
             // Tell the task to cancel the extraction session if it exists
             if (plugin.getExtractionTask() != null) {
                 plugin.getExtractionTask().cancelExtractionByDamage(victim);
+            }
+        }
+    }
+
+    // 3. Button Press: Start extraction process
+    @EventHandler
+    public void onPlayerInteract(PlayerInteractEvent event) {
+        if (event.getAction() != Action.RIGHT_CLICK_BLOCK) return;
+        
+        org.bukkit.block.Block clickedBlock = event.getClickedBlock();
+        if (clickedBlock == null) return;
+        
+        // Check if the clicked block is a button (or just the conduit itself based on setup)
+        // We will just check if this block's location matches any region's conduit location.
+        // It might be the button ON the conduit, or the conduit itself. 
+        // For simplicity, we check if the clicked block is within 1 block of the conduit location.
+        
+        Location clickLoc = clickedBlock.getLocation();
+        for (SavedRegion region : plugin.getRegionManager().getRegions()) {
+            if (region.getType() == RegionType.EXTRACTION && region.getConduitLocation() != null) {
+                Location conduitLoc = region.getConduitLocation();
+                if (conduitLoc.getWorld().equals(clickLoc.getWorld()) && 
+                    clickLoc.distanceSquared(conduitLoc) <= 2.0) { // Catch button attached to it
+                    
+                    // Found an interaction on the extraction point!
+                    if (plugin.getExtractionTask() != null) {
+                        plugin.getExtractionTask().handleButtonPress(event.getPlayer(), region);
+                    }
+                    return;
+                }
             }
         }
     }
