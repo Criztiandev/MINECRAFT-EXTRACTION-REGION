@@ -2,7 +2,6 @@ package com.criztiandev.extractionregion.listeners;
 
 import com.criztiandev.extractionregion.ExtractionRegionPlugin;
 import com.criztiandev.extractionregion.gui.RegionActionGUI;
-import com.criztiandev.extractionregion.gui.RegionChestDropGUI;
 import com.criztiandev.extractionregion.gui.RegionListGUI;
 import com.criztiandev.extractionregion.gui.RegionMainGUI;
 import com.criztiandev.extractionregion.models.SavedRegion;
@@ -97,18 +96,26 @@ public class RegionInventoryListener implements Listener {
                 SavedRegion region = plugin.getRegionManager().getRegion(regionId);
                 if (region == null) return;
 
-                if ("chest".equals(action)) {
-                    new RegionChestDropGUI(plugin).openMenu(player, region);
-                } else if ("mode".equals(action)) {
-                    SavedRegion.SpawnMode next = region.getSpawnMode() == SavedRegion.SpawnMode.RANDOM ? SavedRegion.SpawnMode.SPECIFIC : SavedRegion.SpawnMode.RANDOM;
-                    player.chat("/lr mode " + regionId + " " + next.name().toLowerCase());
-                    Bukkit.getScheduler().runTaskLater(plugin, () -> new RegionActionGUI(plugin).openMenu(player, region), 1L);
-                } else if ("capture".equals(action)) {
-                    player.chat("/lr capture " + regionId);
+                if ("force".equals(action)) {
+                    // Trigger force Replenish
                     player.closeInventory();
-                } else if ("force".equals(action)) {
-                    player.chat("/lr spawn " + regionId);
-                    player.closeInventory();
+                    int count = plugin.getRegionManager().forceReplenish(region);
+                    player.sendMessage("§aForce replenished " + count + " chests in region §e" + regionId + "§a.");
+                } else if ("timer".equals(action)) {
+                    // Cycle: 60 (1h) -> 120 (2h) -> 360 (6h) -> 720 (12h) -> 1440 (24h)
+                    int current = region.getResetIntervalMinutes();
+                    int next = 60; // default start
+                    
+                    if (current == 60) next = 120;
+                    else if (current == 120) next = 360; // 6 hours
+                    else if (current == 360) next = 720; // 12 hours
+                    else if (current == 720) next = 1440; // 24 hours
+                    else if (current == 1440) next = 60; // loop back to 1 hour
+                    else next = 360; // if it was a weird custom number, snap to 6 hours
+                    
+                    region.setResetIntervalMinutes(next);
+                    plugin.getRegionManager().saveRegion(region);
+                    new RegionActionGUI(plugin).openMenu(player, region); // Refresh
                 } else if ("delete".equals(action)) {
                     player.chat("/lr delete " + regionId);
                     player.closeInventory();
@@ -132,51 +139,5 @@ public class RegionInventoryListener implements Listener {
         // Note: The Region Auto Spawn click-GUI was removed/replaced by Chest Drop GUI
     }
 
-    @EventHandler
-    public void onInventoryClose(InventoryCloseEvent event) {
-        if (!(event.getPlayer() instanceof Player)) return;
-        Player player = (Player) event.getPlayer();
-        String title = event.getView().getTitle();
-
-        if (title.startsWith("§8▶ §dDrop Chests: §7")) {
-            String regionId = title.substring("§8▶ §dDrop Chests: §7".length());
-            SavedRegion region = plugin.getRegionManager().getRegion(regionId);
-            if (region == null) return;
-
-            // Clear existing random spawns so we only save what is exactly in the menu
-            region.getAutoSpawns().clear();
-            
-            int totalChests = 0;
-            
-            // Scan through all 54 slots
-            for (ItemStack item : event.getInventory().getContents()) {
-                if (item == null || item.getType() == Material.AIR || !item.hasItemMeta()) continue;
-                
-                ItemMeta meta = item.getItemMeta();
-                PersistentDataContainer data = meta.getPersistentDataContainer();
-                
-                // ExtractionChest assigns a "extraction-chest-tier" string to its items. 
-                // We'll use this to identify the Definition Name.
-                NamespacedKey tierKey = new NamespacedKey("extractionchest", "extraction-chest-tier");
-                
-                // Support older versions / variations just in case
-                if (data.has(tierKey, PersistentDataType.STRING)) {
-                    String defName = data.get(tierKey, PersistentDataType.STRING);
-                    int count = item.getAmount();
-                    
-                    region.setAutoSpawn(defName, region.getAutoSpawnAmount(defName) + count);
-                    totalChests += count;
-                }
-            }
-
-            // Save region
-            plugin.getRegionManager().saveRegion(region);
-            player.sendMessage("§aSaved §e" + totalChests + " §achests to spawn randomly in region §e" + regionId + "§a!");
-            
-            // Re-open Action GUI seamlessly
-            Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                new RegionActionGUI(plugin).openMenu(player, region);
-            }, 1L);
-        }
-    }
+    // Region Chest Drop GUI logic removed as it's no longer used
 }

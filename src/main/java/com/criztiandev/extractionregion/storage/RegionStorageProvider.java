@@ -11,4 +11,5 @@ public interface RegionStorageProvider {
     CompletableFuture<List<SavedRegion>> loadAllRegions();
     CompletableFuture<Void> saveRegion(SavedRegion region);
     CompletableFuture<Void> deleteRegion(String id);
+    CompletableFuture<Boolean> renameRegion(String oldId, String newId);
 }

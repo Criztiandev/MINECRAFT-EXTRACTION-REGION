@@ -51,7 +51,6 @@ public class RegionListGUI {
                     "§7World: §f" + region.getWorld(),
                     "§7Pos1: §f" + region.getMinX() + ", " + region.getMinZ(),
                     "§7Pos2: §f" + region.getMaxX() + ", " + region.getMaxZ(),
-                    "§7Auto-Spawns Configured: §f" + region.getAutoSpawns().size(),
                     "",
                     "§eClick to manage this region."
                 ));

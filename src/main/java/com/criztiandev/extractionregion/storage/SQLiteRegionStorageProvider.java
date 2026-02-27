@@ -54,26 +54,26 @@ public class SQLiteRegionStorageProvider implements RegionStorageProvider {
                     "max_x INTEGER NOT NULL," +
                     "min_z INTEGER NOT NULL," +
                     "max_z INTEGER NOT NULL," +
-                    "spawn_mode TEXT NOT NULL DEFAULT 'RANDOM'" +
+                    "next_reset_time INTEGER NOT NULL DEFAULT 0," +
+                    "reset_interval_minutes INTEGER NOT NULL DEFAULT 360" +
                     ");");
+                    
+            // Migration check: If table already existed without the new columns, add them.
+            try {
+                stmt.execute("ALTER TABLE regions ADD COLUMN next_reset_time INTEGER NOT NULL DEFAULT 0");
+                plugin.getLogger().info("Migrated database: added next_reset_time to regions");
+            } catch (SQLException ignored) {
+                // Column likely already exists
+            }
+            try {
+                stmt.execute("ALTER TABLE regions ADD COLUMN reset_interval_minutes INTEGER NOT NULL DEFAULT 360");
+                plugin.getLogger().info("Migrated database: added reset_interval_minutes to regions");
+            } catch (SQLException ignored) {
+                // Column likely already exists
+            }
 
-            // Create Auto Spawns Table
-            stmt.execute("CREATE TABLE IF NOT EXISTS region_auto_spawns (" +
-                    "id INTEGER PRIMARY KEY AUTOINCREMENT," +
-                    "region_id TEXT NOT NULL," +
-                    "chest_type TEXT NOT NULL," +
-                    "amount INTEGER NOT NULL," +
-                    "FOREIGN KEY(region_id) REFERENCES regions(id) ON DELETE CASCADE" +
-                    ");");
-
-            // Create Specific Locations Table
-            stmt.execute("CREATE TABLE IF NOT EXISTS region_specific_locations (" +
-                    "id INTEGER PRIMARY KEY AUTOINCREMENT," +
-                    "region_id TEXT NOT NULL," +
-                    "coordinates TEXT NOT NULL," +
-                    "chest_type TEXT NOT NULL," +
-                    "FOREIGN KEY(region_id) REFERENCES regions(id) ON DELETE CASCADE" +
-                    ");");
+            // Tables `region_auto_spawns` and `region_specific_locations` are deprecated
+            // We can optionally drop them here if the user wants clean DBs, but ignoring them is safer for downgrades.
 
         } catch (SQLException e) {
             plugin.getLogger().severe("Failed to initialize SQLite database: " + e.getMessage());
@@ -105,33 +105,13 @@ public class SQLiteRegionStorageProvider implements RegionStorageProvider {
                         int maxX = rs.getInt("max_x");
                         int minZ = rs.getInt("min_z");
                         int maxZ = rs.getInt("max_z");
-                        SavedRegion.SpawnMode spawnMode = SavedRegion.SpawnMode.valueOf(rs.getString("spawn_mode"));
+                        long nextResetTime = rs.getLong("next_reset_time");
+                        int resetIntervalMinutes = rs.getInt("reset_interval_minutes");
 
                         SavedRegion region = new SavedRegion(id, world, minX, maxX, minZ, maxZ);
-                        region.setSpawnMode(spawnMode);
+                        region.setNextResetTime(nextResetTime);
+                        region.setResetIntervalMinutes(resetIntervalMinutes);
                         regions.add(region);
-                    }
-                }
-
-                // 2. Load Auto Spawns for each region
-                for (SavedRegion region : regions) {
-                    try (PreparedStatement stmt = conn.prepareStatement("SELECT chest_type, amount FROM region_auto_spawns WHERE region_id = ?")) {
-                        stmt.setString(1, region.getId());
-                        try (ResultSet rs = stmt.executeQuery()) {
-                            while (rs.next()) {
-                                region.setAutoSpawn(rs.getString("chest_type"), rs.getInt("amount"));
-                            }
-                        }
-                    }
-
-                    // 3. Load Specific Locations for each region
-                    try (PreparedStatement stmt = conn.prepareStatement("SELECT coordinates, chest_type FROM region_specific_locations WHERE region_id = ?")) {
-                        stmt.setString(1, region.getId());
-                        try (ResultSet rs = stmt.executeQuery()) {
-                            while (rs.next()) {
-                                region.getSpecificLocations().put(rs.getString("coordinates"), rs.getString("chest_type"));
-                            }
-                        }
                     }
                 }
 
@@ -151,11 +131,12 @@ public class SQLiteRegionStorageProvider implements RegionStorageProvider {
                 try {
                     // 1. Upsert Region
                     try (PreparedStatement stmt = conn.prepareStatement(
-                            "INSERT INTO regions (id, world, min_x, max_x, min_z, max_z, spawn_mode) " +
-                            "VALUES (?, ?, ?, ?, ?, ?, ?) " +
+                            "INSERT INTO regions (id, world, min_x, max_x, min_z, max_z, next_reset_time, reset_interval_minutes) " +
+                            "VALUES (?, ?, ?, ?, ?, ?, ?, ?) " +
                             "ON CONFLICT(id) DO UPDATE SET " +
                             "world=excluded.world, min_x=excluded.min_x, max_x=excluded.max_x, " +
-                            "min_z=excluded.min_z, max_z=excluded.max_z, spawn_mode=excluded.spawn_mode")) {
+                            "min_z=excluded.min_z, max_z=excluded.max_z, " +
+                            "next_reset_time=excluded.next_reset_time, reset_interval_minutes=excluded.reset_interval_minutes")) {
                         
                         stmt.setString(1, region.getId());
                         stmt.setString(2, region.getWorld());
@@ -163,44 +144,12 @@ public class SQLiteRegionStorageProvider implements RegionStorageProvider {
                         stmt.setInt(4, region.getMaxX());
                         stmt.setInt(5, region.getMinZ());
                         stmt.setInt(6, region.getMaxZ());
-                        stmt.setString(7, region.getSpawnMode().name());
+                        stmt.setLong(7, region.getNextResetTime());
+                        stmt.setInt(8, region.getResetIntervalMinutes());
                         stmt.executeUpdate();
                     }
 
-                    // 2. Replace Auto Spawns (Delete then Insert)
-                    try (PreparedStatement stmt = conn.prepareStatement("DELETE FROM region_auto_spawns WHERE region_id = ?")) {
-                        stmt.setString(1, region.getId());
-                        stmt.executeUpdate();
-                    }
-                    if (!region.getAutoSpawns().isEmpty()) {
-                        try (PreparedStatement stmt = conn.prepareStatement("INSERT INTO region_auto_spawns (region_id, chest_type, amount) VALUES (?, ?, ?)")) {
-                            for (Map.Entry<String, Integer> entry : region.getAutoSpawns().entrySet()) {
-                                stmt.setString(1, region.getId());
-                                stmt.setString(2, entry.getKey());
-                                stmt.setInt(3, entry.getValue());
-                                stmt.addBatch();
-                            }
-                            stmt.executeBatch();
-                        }
-                    }
-
-                    // 3. Replace Specific Locations (Delete then Insert)
-                    try (PreparedStatement stmt = conn.prepareStatement("DELETE FROM region_specific_locations WHERE region_id = ?")) {
-                        stmt.setString(1, region.getId());
-                        stmt.executeUpdate();
-                    }
-                    if (!region.getSpecificLocations().isEmpty()) {
-                        try (PreparedStatement stmt = conn.prepareStatement("INSERT INTO region_specific_locations (region_id, coordinates, chest_type) VALUES (?, ?, ?)")) {
-                            for (Map.Entry<String, String> entry : region.getSpecificLocations().entrySet()) {
-                                stmt.setString(1, region.getId());
-                                stmt.setString(2, entry.getKey());
-                                stmt.setString(3, entry.getValue());
-                                stmt.addBatch();
-                            }
-                            stmt.executeBatch();
-                        }
-                    }
-
+                    // Specific tables no longer managed
                     conn.commit(); // Commit transaction
                 } catch (SQLException e) {
                     conn.rollback();
@@ -225,16 +174,6 @@ public class SQLiteRegionStorageProvider implements RegionStorageProvider {
                     // With SQLite ON DELETE CASCADE might not always be enabled by default depending on PRAGMA,
                     // so we explicitly delete children just in case.
                     
-                    try (PreparedStatement stmt = conn.prepareStatement("DELETE FROM region_auto_spawns WHERE region_id = ?")) {
-                        stmt.setString(1, id);
-                        stmt.executeUpdate();
-                    }
-                    
-                    try (PreparedStatement stmt = conn.prepareStatement("DELETE FROM region_specific_locations WHERE region_id = ?")) {
-                        stmt.setString(1, id);
-                        stmt.executeUpdate();
-                    }
-                    
                     try (PreparedStatement stmt = conn.prepareStatement("DELETE FROM regions WHERE id = ?")) {
                         stmt.setString(1, id);
                         stmt.executeUpdate();
@@ -249,6 +188,38 @@ public class SQLiteRegionStorageProvider implements RegionStorageProvider {
                 }
             } catch (SQLException e) {
                 plugin.getLogger().severe("Failed to delete region " + id + " from SQLite: " + e.getMessage());
+            }
+        });
+    }
+
+    @Override
+    public CompletableFuture<Boolean> renameRegion(String oldId, String newId) {
+        return CompletableFuture.supplyAsync(() -> {
+            try (Connection conn = dataSource.getConnection()) {
+                conn.setAutoCommit(false);
+                try {
+                    // Update main region table
+                    try (PreparedStatement stmt = conn.prepareStatement("UPDATE regions SET id = ? WHERE id = ?")) {
+                        stmt.setString(1, newId);
+                        stmt.setString(2, oldId);
+                        int updated = stmt.executeUpdate();
+                        if (updated == 0) {
+                            conn.rollback();
+                            return false; // Region didn't exist
+                        }
+                    }
+                    
+                    conn.commit();
+                    return true;
+                } catch (SQLException e) {
+                    conn.rollback();
+                    throw e;
+                } finally {
+                    conn.setAutoCommit(true);
+                }
+            } catch (SQLException e) {
+                plugin.getLogger().severe("Failed to rename region from " + oldId + " to " + newId + " in SQLite: " + e.getMessage());
+                return false;
             }
         });
     }

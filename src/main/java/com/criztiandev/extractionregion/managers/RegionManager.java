@@ -11,6 +11,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CompletableFuture;
 
 public class RegionManager {
 
@@ -65,61 +66,67 @@ public class RegionManager {
         plugin.getStorageProvider().deleteRegion(id);
     }
     
-    public int runAutoSpawns(SavedRegion region) {
-        // Destroy existing chests in this exact region
+    public CompletableFuture<Boolean> renameRegion(String oldId, String newId) {
+        if (regions.containsKey(newId.toLowerCase())) {
+            return CompletableFuture.completedFuture(false);
+        }
+        
+        SavedRegion region = regions.get(oldId.toLowerCase());
+        if (region == null) {
+            return CompletableFuture.completedFuture(false);
+        }
+        
+        return plugin.getStorageProvider().renameRegion(oldId, newId).thenApply(success -> {
+            if (success) {
+                regions.remove(oldId.toLowerCase());
+                region.setId(newId);
+                regions.put(newId.toLowerCase(), region);
+            }
+            return success;
+        });
+    }
+    
+    public int forceReplenish(SavedRegion region) {
+        java.util.List<com.criztiandev.extractionchest.models.ChestInstance> chestsToReplenish = new java.util.ArrayList<>();
         for (com.criztiandev.extractionchest.models.ChestInstance inst : plugin.getExtractionChestApi().getChestInstanceManager().getAllInstances()) {
             if (inst.getWorld().equals(region.getWorld())) {
                 org.bukkit.Location loc = inst.getLocation(org.bukkit.Bukkit.getWorld(inst.getWorld()));
                 if (loc.getBlockX() >= region.getMinX() && loc.getBlockX() <= region.getMaxX() &&
                     loc.getBlockZ() >= region.getMinZ() && loc.getBlockZ() <= region.getMaxZ()) {
-                    plugin.getExtractionChestApi().getChestInstanceManager().removeInstance(inst.getId());
+                    chestsToReplenish.add(inst);
                 }
             }
         }
-
-        // Spawn new chests
-        int successCount = 0;
         
-        if (region.getSpawnMode() == SavedRegion.SpawnMode.SPECIFIC) {
-            org.bukkit.World bukkitWorld = org.bukkit.Bukkit.getWorld(region.getWorld());
-            if (bukkitWorld != null) {
-                for (Map.Entry<String, String> entry : region.getSpecificLocations().entrySet()) {
-                    String[] coords = entry.getKey().split(",");
-                    if (coords.length != 3) continue;
-                    
-                    try {
-                        int x = Integer.parseInt(coords[0]);
-                        int y = Integer.parseInt(coords[1]);
-                        int z = Integer.parseInt(coords[2]);
-                        
-                        com.criztiandev.extractionchest.models.ParentChestDefinition def = plugin.getExtractionChestApi().getLootTableManager().getDefinition(entry.getValue());
-                        if (def == null) continue;
-                        
-                        com.criztiandev.extractionchest.models.ChestInstance instance = new com.criztiandev.extractionchest.models.ChestInstance(UUID.randomUUID().toString(), def.getName(), region.getWorld(), x, y, z, com.criztiandev.extractionchest.models.ChestState.READY, null);
-                        instance.setActiveInventory(plugin.getExtractionChestApi().getLootTableManager().rollLoot(def));
-                        plugin.getExtractionChestApi().getChestInstanceManager().addInstance(instance);
-                        successCount++;
-                    } catch (NumberFormatException ignored) {}
-                }
-            }
-        } else {
-            RegionSelection selection = region.toRegionSelection();
-            for (Map.Entry<String, Integer> entry : region.getAutoSpawns().entrySet()) {
-                com.criztiandev.extractionchest.models.ParentChestDefinition def = plugin.getExtractionChestApi().getLootTableManager().getDefinition(entry.getKey());
-                if (def == null) continue;
-                
-                for (int i = 0; i < entry.getValue(); i++) {
-                    org.bukkit.Location spawnLoc = com.criztiandev.extractionregion.utils.RegionLocationUtils.getRandomSafeLocation(selection, 20);
-                    if (spawnLoc != null) {
-                        com.criztiandev.extractionchest.models.ChestInstance instance = new com.criztiandev.extractionchest.models.ChestInstance(UUID.randomUUID().toString(), def.getName(), spawnLoc.getWorld().getName(), spawnLoc.getBlockX(), spawnLoc.getBlockY(), spawnLoc.getBlockZ(), com.criztiandev.extractionchest.models.ChestState.READY, null);
-                        instance.setActiveInventory(plugin.getExtractionChestApi().getLootTableManager().rollLoot(def));
-                        plugin.getExtractionChestApi().getChestInstanceManager().addInstance(instance);
-                        successCount++;
+        if (chestsToReplenish.isEmpty()) return 0;
+
+        new org.bukkit.scheduler.BukkitRunnable() {
+            int index = 0;
+            final int BATCH_SIZE = 5;
+
+            @Override
+            public void run() {
+                for (int i = 0; i < BATCH_SIZE && index < chestsToReplenish.size(); i++, index++) {
+                    com.criztiandev.extractionchest.models.ChestInstance inst = chestsToReplenish.get(index);
+                    if (inst.getState() != com.criztiandev.extractionchest.models.ChestState.READY) {
+                        plugin.getExtractionChestApi().getChestInstanceManager().changeState(inst, com.criztiandev.extractionchest.models.ChestState.RESPAWNING);
+                    } else {
+                        com.criztiandev.extractionchest.models.ParentChestDefinition def = plugin.getExtractionChestApi().getLootTableManager().getDefinition(inst.getParentName());
+                        if (def != null && (inst.getActiveInventory() == null || inst.getActiveInventory().isEmpty())) {
+                            inst.setActiveInventory(plugin.getExtractionChestApi().getLootTableManager().rollLoot(def));
+                            plugin.getExtractionChestApi().getStorageProvider().saveInstance(inst);
+                        }
                     }
                 }
+                if (index >= chestsToReplenish.size()) {
+                    this.cancel();
+                }
             }
-        }
-        return successCount;
+        }.runTaskTimer(plugin, 1L, 1L);
+        
+        region.setNextResetTime(System.currentTimeMillis() + (region.getResetIntervalMinutes() * 60000L));
+        saveRegion(region); // Save the updated timer
+        return chestsToReplenish.size();
     }
 
     public RegionSelection getSelection(UUID uuid) {

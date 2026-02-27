@@ -4,18 +4,13 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class SavedRegion {
-    public enum SpawnMode {
-        RANDOM, SPECIFIC
-    }
-    private final String id;
+    private String id;
     private final String world;
     private final int minX, maxX, minZ, maxZ;
-    private final Map<String, Integer> autoSpawns;
-    private final Map<String, String> specificLocations; // Format: "x,y,z" -> definitionName
-    private SpawnMode spawnMode;
 
     private long nextResetTime;
     private int resetIntervalMinutes;
+    private transient int lastResetMinuteOfDay = -1;
 
     public SavedRegion(String id, String world, int minX, int maxX, int minZ, int maxZ) {
         this.id = id;
@@ -24,23 +19,8 @@ public class SavedRegion {
         this.maxX = maxX;
         this.minZ = minZ;
         this.maxZ = maxZ;
-        this.autoSpawns = new HashMap<>();
-        this.specificLocations = new HashMap<>();
-        this.spawnMode = SpawnMode.RANDOM;
         this.nextResetTime = 0;
-        this.resetIntervalMinutes = 120; // Default 2 hours
-    }
-
-    public SpawnMode getSpawnMode() {
-        return spawnMode;
-    }
-
-    public void setSpawnMode(SpawnMode spawnMode) {
-        this.spawnMode = spawnMode;
-    }
-
-    public Map<String, String> getSpecificLocations() {
-        return specificLocations;
+        this.resetIntervalMinutes = 360; // Default 6 hours
     }
 
     public long getNextResetTime() {
@@ -59,8 +39,20 @@ public class SavedRegion {
         this.resetIntervalMinutes = resetIntervalMinutes;
     }
 
+    public int getLastResetMinuteOfDay() {
+        return lastResetMinuteOfDay;
+    }
+
+    public void setLastResetMinuteOfDay(int lastResetMinuteOfDay) {
+        this.lastResetMinuteOfDay = lastResetMinuteOfDay;
+    }
+
     public String getId() {
         return id;
+    }
+
+    public void setId(String id) {
+        this.id = id;
     }
 
     public String getWorld() {
@@ -81,22 +73,6 @@ public class SavedRegion {
 
     public int getMaxZ() {
         return maxZ;
-    }
-
-    public Map<String, Integer> getAutoSpawns() {
-        return autoSpawns;
-    }
-
-    public void setAutoSpawn(String definitionName, int amount) {
-        if (amount <= 0) {
-            autoSpawns.remove(definitionName);
-        } else {
-            autoSpawns.put(definitionName, amount);
-        }
-    }
-    
-    public int getAutoSpawnAmount(String definitionName) {
-        return autoSpawns.getOrDefault(definitionName, 0);
     }
     
     // Convert to RegionSelection to reuse LocationUtils algorithms
