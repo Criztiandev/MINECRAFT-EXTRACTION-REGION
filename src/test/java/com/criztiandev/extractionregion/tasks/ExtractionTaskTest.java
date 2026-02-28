@@ -8,6 +8,7 @@ import net.md_5.bungee.api.chat.TextComponent;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.World;
+import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -32,6 +33,7 @@ public class ExtractionTaskTest {
     @Mock private ExtractionRegionPlugin plugin;
     @Mock private Player player;
     @Mock private World world;
+    @Mock private FileConfiguration config;
 
     private ExtractionTask task;
     private SavedRegion region;
@@ -50,6 +52,15 @@ public class ExtractionTaskTest {
         lenient().when(player.getUniqueId()).thenReturn(UUID.randomUUID());
         lenient().when(player.getName()).thenReturn("Tester");
         lenient().when(world.getName()).thenReturn("world");
+        
+        Player.Spigot spigotMock = mock(Player.Spigot.class);
+        lenient().when(player.spigot()).thenReturn(spigotMock);
+        
+        region.setConduitLocation(new Location(world, 5, 64, 5));
+
+        lenient().when(plugin.getConfig()).thenReturn(config);
+        lenient().when(config.getString(anyString(), anyString())).thenAnswer(invocation -> invocation.getArgument(1));
+        lenient().when(config.getInt(anyString(), anyInt())).thenAnswer(invocation -> invocation.getArgument(1));
 
         mockedBukkit = mockStatic(Bukkit.class);
         mockedBukkit.when(Bukkit::getOnlinePlayers).thenReturn(Collections.singletonList(player));
@@ -67,7 +78,7 @@ public class ExtractionTaskTest {
         
         task.handleButtonPress(player, region);
 
-        verify(player).sendMessage(contains("is on cooldown"));
+        verify(player).sendMessage(org.mockito.ArgumentMatchers.contains("is on cooldown"));
         // We verify that no broadcast was done
         verify(player, never()).spigot();
     }
@@ -80,14 +91,6 @@ public class ExtractionTaskTest {
         task.handleButtonPress(player, region);
 
         // Verify action bar was sent
-        verify(player).sendMessage(contains("An extraction has been initiated"));
-        
-        // Verify action bar through spigot().sendMessage()
-        Player.Spigot spigotMock = mock(Player.Spigot.class);
-        when(player.spigot()).thenReturn(spigotMock);
-        
-        // We manually trigger it again to check spigot mock, or we can just capture it
-        // Since spigot() was already called, we might need a better mock setup.
-        // But verify player.sendMessage is enough to prove the broadcast block ran.
+        verify(player).sendMessage(org.mockito.ArgumentMatchers.contains("An extraction has been initiated"));
     }
 }

@@ -74,11 +74,31 @@ public class YamlRegionStorageProvider implements RegionStorageProvider {
                     }
                 }
                 
-                if (sec.contains("cooldownMinutes")) region.setCooldownMinutes(sec.getInt("cooldownMinutes"));
+                if (sec.contains("cooldownSequence")) {
+                    String seqStr = sec.getString("cooldownSequence");
+                    java.util.List<Integer> seq = new java.util.ArrayList<>();
+                    if (seqStr != null && !seqStr.isEmpty()) {
+                        for (String part : seqStr.split(",")) {
+                            try { seq.add(Integer.parseInt(part.trim())); } catch (NumberFormatException ignored) {}
+                        }
+                    }
+                    if (!seq.isEmpty()) {
+                        region.setCooldownSequence(seq);
+                    }
+                } else if (sec.contains("cooldownMinutes")) {
+                    // Legacy migration
+                    region.setCooldownSequence(new java.util.ArrayList<>(java.util.Arrays.asList(sec.getInt("cooldownMinutes"))));
+                }
+                
+                if (sec.contains("cooldownIndex")) region.setCooldownIndex(sec.getInt("cooldownIndex"));
                 if (sec.contains("maxCapacity")) region.setMaxCapacity(sec.getInt("maxCapacity"));
                 if (sec.contains("minCapacity")) region.setMinCapacity(sec.getInt("minCapacity"));
                 if (sec.contains("cooldownEndTime")) region.setCooldownEndTime(sec.getLong("cooldownEndTime"));
                 if (sec.contains("mimicEnabled")) region.setMimicEnabled(sec.getBoolean("mimicEnabled"));
+                if (sec.contains("mimicChance")) region.setMimicChance(sec.getInt("mimicChance"));
+                if (sec.contains("announcementRadius")) region.setAnnouncementRadius(sec.getInt("announcementRadius"));
+                if (sec.contains("beamColor")) region.setBeamColor(sec.getString("beamColor"));
+                if (sec.contains("alarmSound")) region.setAlarmSound(sec.getString("alarmSound"));
 
                 if (sec.contains("drop")) {
                     region.setDropWorld(sec.getString("drop.world"));
@@ -88,6 +108,31 @@ public class YamlRegionStorageProvider implements RegionStorageProvider {
                     region.setDropMaxY(sec.getInt("drop.maxY"));
                     region.setDropMinZ(sec.getInt("drop.minZ"));
                     region.setDropMaxZ(sec.getInt("drop.maxZ"));
+                }
+                
+                if (sec.contains("extractionSpawn")) {
+                    region.setExtractionSpawnWorld(sec.getString("extractionSpawn.world"));
+                    region.setExtractionSpawnX(sec.getDouble("extractionSpawn.x"));
+                    region.setExtractionSpawnY(sec.getDouble("extractionSpawn.y"));
+                    region.setExtractionSpawnZ(sec.getDouble("extractionSpawn.z"));
+                    region.setExtractionSpawnYaw((float) sec.getDouble("extractionSpawn.yaw"));
+                    region.setExtractionSpawnPitch((float) sec.getDouble("extractionSpawn.pitch"));
+                }
+                
+                if (sec.contains("possibleDurations")) {
+                    String seqStr = sec.getString("possibleDurations");
+                    java.util.List<Integer> seq = new java.util.ArrayList<>();
+                    if (seqStr != null && !seqStr.isEmpty()) {
+                        for (String part : seqStr.split(",")) {
+                            try { seq.add(Integer.parseInt(part.trim())); } catch (NumberFormatException ignored) {}
+                        }
+                    }
+                    if (!seq.isEmpty()) {
+                        region.setPossibleDurations(seq);
+                    }
+                } else if (sec.contains("extractionDurationSeconds")) {
+                    // Legacy migration
+                    region.setPossibleDurations(new java.util.ArrayList<>(java.util.Arrays.asList(sec.getInt("extractionDurationSeconds"))));
                 }
                 
                 if (sec.contains("slowFallingSeconds")) region.setSlowFallingSeconds(sec.getInt("slowFallingSeconds"));
@@ -133,11 +178,23 @@ public class YamlRegionStorageProvider implements RegionStorageProvider {
                 config.set(path + ".conduit", null);
             }
             
-            config.set(path + ".cooldownMinutes", region.getCooldownMinutes());
+            java.util.List<Integer> seq = region.getCooldownSequence();
+            StringBuilder seqBuilder = new StringBuilder();
+            for (int i = 0; i < seq.size(); i++) {
+                seqBuilder.append(seq.get(i));
+                if (i < seq.size() - 1) seqBuilder.append(",");
+            }
+            
+            config.set(path + ".cooldownSequence", seqBuilder.toString());
+            config.set(path + ".cooldownIndex", region.getCooldownIndex());
             config.set(path + ".maxCapacity", region.getMaxCapacity());
             config.set(path + ".minCapacity", region.getMinCapacity());
             config.set(path + ".cooldownEndTime", region.getCooldownEndTime());
             config.set(path + ".mimicEnabled", region.isMimicEnabled());
+            config.set(path + ".mimicChance", region.getMimicChance());
+            config.set(path + ".announcementRadius", region.getAnnouncementRadius());
+            config.set(path + ".beamColor", region.getBeamColor());
+            config.set(path + ".alarmSound", region.getAlarmSound());
 
             if (region.getDropWorld() != null) {
                 config.set(path + ".drop.world", region.getDropWorld());
@@ -150,6 +207,26 @@ public class YamlRegionStorageProvider implements RegionStorageProvider {
             } else {
                 config.set(path + ".drop", null);
             }
+            
+            if (region.getExtractionSpawnWorld() != null) {
+                config.set(path + ".extractionSpawn.world", region.getExtractionSpawnWorld());
+                config.set(path + ".extractionSpawn.x", region.getExtractionSpawnX());
+                config.set(path + ".extractionSpawn.y", region.getExtractionSpawnY());
+                config.set(path + ".extractionSpawn.z", region.getExtractionSpawnZ());
+                config.set(path + ".extractionSpawn.yaw", region.getExtractionSpawnYaw());
+                config.set(path + ".extractionSpawn.pitch", region.getExtractionSpawnPitch());
+            } else {
+                config.set(path + ".extractionSpawn", null);
+            }
+            
+            java.util.List<Integer> dSeq = region.getPossibleDurations();
+            StringBuilder dSeqBuilder = new StringBuilder();
+            for (int i = 0; i < dSeq.size(); i++) {
+                dSeqBuilder.append(dSeq.get(i));
+                if (i < dSeq.size() - 1) dSeqBuilder.append(",");
+            }
+            config.set(path + ".possibleDurations", dSeqBuilder.toString());
+            
             config.set(path + ".slowFallingSeconds", region.getSlowFallingSeconds());
             config.set(path + ".blindnessSeconds", region.getBlindnessSeconds());
 

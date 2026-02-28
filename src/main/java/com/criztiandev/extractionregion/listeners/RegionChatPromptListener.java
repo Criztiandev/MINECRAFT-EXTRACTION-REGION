@@ -83,5 +83,104 @@ public class RegionChatPromptListener implements Listener {
                 player.sendMessage("§cInvalid number. Please enter a valid integer (e.g., 60), or type 'cancel'.");
             }
         }
+        
+        if (plugin.getRegionManager().hasPromptState(player.getUniqueId())) {
+            event.setCancelled(true);
+            String input = event.getMessage().trim();
+            String state = plugin.getRegionManager().getPromptState(player.getUniqueId());
+
+            if (input.equalsIgnoreCase("cancel")) {
+                plugin.getRegionManager().removePromptState(player.getUniqueId());
+                player.sendMessage("§cInput cancelled.");
+                return;
+            }
+
+            try {
+                String[] parts = state.split("_", 3);
+                if (parts.length < 3) return; // Malformed state
+
+                String prefix = "";
+                String rId = "";
+                if (state.startsWith("extrc_cooldown_")) { prefix = "extrc_cooldown_"; rId = state.substring(prefix.length()); }
+                else if (state.startsWith("extrc_min_cap_")) { prefix = "extrc_min_cap_"; rId = state.substring(prefix.length()); }
+                else if (state.startsWith("extrc_max_cap_")) { prefix = "extrc_max_cap_"; rId = state.substring(prefix.length()); }
+                else if (state.startsWith("extrc_duration_")) { prefix = "extrc_duration_"; rId = state.substring(prefix.length()); }
+                else if (state.startsWith("extrc_mimic_")) { prefix = "extrc_mimic_"; rId = state.substring(prefix.length()); }
+                else if (state.startsWith("extrc_radius_")) { prefix = "extrc_radius_"; rId = state.substring(prefix.length()); }
+                else if (state.startsWith("extrc_beam_")) { prefix = "extrc_beam_"; rId = state.substring(prefix.length()); }
+                else if (state.startsWith("extrc_alarm_")) { prefix = "extrc_alarm_"; rId = state.substring(prefix.length()); }
+
+                plugin.getRegionManager().removePromptState(player.getUniqueId());
+
+                com.criztiandev.extractionregion.models.SavedRegion region = plugin.getRegionManager().getRegion(rId);
+                if (region != null) {
+                    if (prefix.equals("extrc_cooldown_") || prefix.equals("extrc_duration_")) {
+                        java.util.List<Integer> seq = new java.util.ArrayList<>();
+                        for (String part : input.split(",")) {
+                            try {
+                                int val = Integer.parseInt(part.trim());
+                                if (val >= 0) seq.add(val);
+                            } catch (NumberFormatException ignored) {}
+                        }
+                        if (seq.isEmpty()) {
+                            player.sendMessage("§cInvalid sequence. Please enter valid numbers (e.g., 15,25,30).");
+                            return;
+                        }
+                        
+                        if (prefix.equals("extrc_cooldown_")) {
+                            region.setCooldownSequence(seq);
+                            region.setCooldownIndex(0);
+                            player.sendMessage("§aCooldown sequence updated to " + input + ".");
+                        } else {
+                            region.setPossibleDurations(seq);
+                            player.sendMessage("§aExtraction duration sequence updated to " + input + ".");
+                        }
+                    } else if (prefix.equals("extrc_beam_") || prefix.equals("extrc_alarm_")) {
+                        if (prefix.equals("extrc_beam_")) {
+                            region.setBeamColor(input);
+                            player.sendMessage("§aBeam color updated to " + input + ".");
+                        } else {
+                            try {
+                                org.bukkit.Sound.valueOf(input.toUpperCase());
+                                region.setAlarmSound(input.toUpperCase());
+                                player.sendMessage("§aAlarm sound updated to " + input.toUpperCase() + ".");
+                            } catch (Exception e) {
+                                player.sendMessage("§cInvalid sound. Please ensure you type a valid Spigot/Paper Sound enum.");
+                                return;
+                            }
+                        }
+                    } else {
+                        try {
+                            int value = Integer.parseInt(input);
+                            if (value < 0) {
+                                player.sendMessage("§cPlease enter a positive number.");
+                                return;
+                            }
+                            
+                            if (prefix.equals("extrc_min_cap_")) region.setMinCapacity(value);
+                            else if (prefix.equals("extrc_max_cap_")) region.setMaxCapacity(value);
+                            else if (prefix.equals("extrc_mimic_")) {
+                                if (value > 100) value = 100;
+                                region.setMimicChance(value);
+                            }
+                            else if (prefix.equals("extrc_radius_")) region.setAnnouncementRadius(value);
+                            
+                            player.sendMessage("§aSetting updated to " + value + ".");
+                        } catch (NumberFormatException e) {
+                            player.sendMessage("§cInvalid input. Please check your numbers or type 'cancel'.");
+                            return;
+                        }
+                    }
+                    
+                    plugin.getRegionManager().saveRegion(region);
+                    
+                    Bukkit.getScheduler().runTask(plugin, () -> {
+                        new com.criztiandev.extractionregion.gui.ExtractionSettingsGUI(plugin).openMenu(player, region);
+                    });
+                }
+            } catch (Exception e) {
+                player.sendMessage("§cAn error occurred processing your input. type 'cancel' if stuck.");
+            }
+        }
     }
 }

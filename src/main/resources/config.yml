@@ -10,3 +10,50 @@ settings:
 region:
   always-show-regions: false
   replenish-batch-size: 5
+
+# Extraction Settings
+extraction:
+  announcement:
+    radius: 100
+    start_actionbar: "&cExtraction %region% | %x%, %y%, %z%"
+    start_chat: "&e[!] Extraction started at &b%region%&e! &7(%x%, %y%, %z%)"
+    end_chat: "&eExtraction &b%region% &efinished! &7(Cap: &b%capacity%&7, Cooldown: &b%cooldown%m&7)"
+  messages:
+    start: "&8[&c!&8] &e⚠️ &aAn extraction has been initiated! &eStand by..."
+    extracting_actionbar: "&a%player% is extracting us!"
+    success: "&aExtraction successful!"
+    cancelled_look: "&cExtraction cancelled: Looked away from conduit!"
+    cancelled_move: "&cExtraction cancelled: You moved!"
+    cancelled_combat: "&cExtraction cancelled by combat!"
+    countdown_actionbar: "&aExtracting in %time%s... &7(Keep looking & don't move)"
+    departed: "&8[&c!&8] &cExtraction point &b%region% &chas departed!"
+    mimic_trap: "&8[&c!&8] &cThe extraction point at &b%region% &cwas a Mimic Trap!"
+  effects:
+    alarm_enabled: true
+    alarm_sound: "ENTITY_ENDER_DRAGON_GROWL" # Options: BLOCK_BELL_RESONATE, ENTITY_GHAST_WARN, ENTITY_GUARDIAN_ATTACK
+    alarm_volume: 3.0
+    alarm_pitch: 2.0
+    beam_color: "#FF0000" # Hex color for the extraction beam
+  fireworks:
+    # Use hex color codes
+    colors:
+      - "#FFFF00" # YELLOW
+      - "#FFA500" # ORANGE
+      - "#FF0000" # RED
+    fade: "#FFFFFF" # WHITE
+  mimic:
+    # Should the trap explode when triggered?
+    explode: true
+    explosion_power: 4.0
+    # Guard mob settings
+    mob_type: "ZOMBIE"
+    custom_name: "&cMimic Guard"
+    equipment:
+      helmet: "IRON_HELMET"
+      chestplate: "IRON_CHESTPLATE"
+      leggings: "IRON_LEGGINGS"
+      boots: "IRON_BOOTS"
+      main_hand: "IRON_SWORD"
+      off_hand: "SHIELD"
+    # How many guards to spawn?
+    spawn_count: 2

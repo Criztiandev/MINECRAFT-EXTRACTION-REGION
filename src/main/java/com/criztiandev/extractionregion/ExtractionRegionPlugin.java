@@ -20,6 +20,8 @@ public class ExtractionRegionPlugin extends JavaPlugin {
     private SelectionVisualizerTask visualizerTask;
     private com.criztiandev.extractionregion.tasks.ExtractionTask extractionTask;
     private com.criztiandev.extractionregion.tasks.EntryTask entryTask;
+    private com.criztiandev.extractionregion.managers.HologramManager hologramManager;
+    private com.criztiandev.extractionregion.tasks.HologramTask hologramTask;
 
     @Override
     public void onEnable() {
@@ -76,12 +78,20 @@ public class ExtractionRegionPlugin extends JavaPlugin {
         // Run the entry portal task every 10 ticks (0.5 seconds)
         this.entryTask = new com.criztiandev.extractionregion.tasks.EntryTask(this);
         getServer().getScheduler().runTaskTimer(this, this.entryTask, 10L, 10L);
+
+        // Run the hologram updater every 20 ticks (1 second)
+        this.hologramManager = new com.criztiandev.extractionregion.managers.HologramManager(this);
+        this.hologramTask = new com.criztiandev.extractionregion.tasks.HologramTask(this);
+        this.hologramTask.runTaskTimer(this, 20L, 20L);
     }
 
     @Override
     public void onDisable() {
         if (this.visualizerTask != null) {
             this.visualizerTask.clearAll();
+        }
+        if (this.hologramManager != null) {
+            this.hologramManager.removeAll();
         }
         if (this.storageProvider != null) {
             this.storageProvider.shutdown();
@@ -99,6 +109,10 @@ public class ExtractionRegionPlugin extends JavaPlugin {
 
     public RegionManager getRegionManager() {
         return regionManager;
+    }
+
+    public com.criztiandev.extractionregion.managers.HologramManager getHologramManager() {
+        return hologramManager;
     }
     
     public com.criztiandev.extractionregion.tasks.ExtractionTask getExtractionTask() {

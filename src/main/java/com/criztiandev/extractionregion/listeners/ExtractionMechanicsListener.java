@@ -4,6 +4,8 @@ import com.criztiandev.extractionregion.ExtractionRegionPlugin;
 import com.criztiandev.extractionregion.models.RegionType;
 import com.criztiandev.extractionregion.models.SavedRegion;
 import org.bukkit.Location;
+import org.bukkit.Material;
+import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -24,7 +26,8 @@ public class ExtractionMechanicsListener implements Listener {
     // 1. Block Protection: Prevent placing/breaking inside EXTRACTION regions
     @EventHandler
     public void onBlockBreak(BlockBreakEvent event) {
-        if (event.getPlayer().hasPermission("extractionchest.admin")) return;
+        Player player = event.getPlayer();
+        boolean hasBypass = player.hasPermission("extractionchest.admin") && player.isSneaking();
 
         Location loc = event.getBlock().getLocation();
         for (SavedRegion region : plugin.getRegionManager().getRegions()) {
@@ -32,8 +35,12 @@ public class ExtractionMechanicsListener implements Listener {
                 if (loc.getBlockX() >= region.getMinX() && loc.getBlockX() <= region.getMaxX() &&
                     loc.getBlockZ() >= region.getMinZ() && loc.getBlockZ() <= region.getMaxZ()) {
                     
-                    event.setCancelled(true);
-                    event.getPlayer().sendMessage("§cYou cannot break blocks in an extraction zone!");
+                    if (!hasBypass) {
+                        event.setCancelled(true);
+                        player.sendMessage("§cYou cannot break blocks in an extraction zone!");
+                    } else {
+                        player.sendMessage("§a[ExtractionRegion] §eBypassed region protection.");
+                    }
                     return;
                 }
             }
@@ -42,7 +49,8 @@ public class ExtractionMechanicsListener implements Listener {
 
     @EventHandler
     public void onBlockPlace(BlockPlaceEvent event) {
-        if (event.getPlayer().hasPermission("extractionchest.admin")) return;
+        Player player = event.getPlayer();
+        boolean hasBypass = player.hasPermission("extractionchest.admin") && player.isSneaking();
 
         Location loc = event.getBlock().getLocation();
         for (SavedRegion region : plugin.getRegionManager().getRegions()) {
@@ -50,8 +58,12 @@ public class ExtractionMechanicsListener implements Listener {
                 if (loc.getBlockX() >= region.getMinX() && loc.getBlockX() <= region.getMaxX() &&
                     loc.getBlockZ() >= region.getMinZ() && loc.getBlockZ() <= region.getMaxZ()) {
                     
-                    event.setCancelled(true);
-                    event.getPlayer().sendMessage("§cYou cannot place blocks in an extraction zone!");
+                    if (!hasBypass) {
+                        event.setCancelled(true);
+                        player.sendMessage("§cYou cannot place blocks in an extraction zone!");
+                    } else {
+                        player.sendMessage("§a[ExtractionRegion] §eBypassed region protection.");
+                    }
                     return;
                 }
             }
@@ -73,15 +85,51 @@ public class ExtractionMechanicsListener implements Listener {
     // 3. Button Press: Start extraction process
     @EventHandler
     public void onPlayerInteract(PlayerInteractEvent event) {
-        if (event.getAction() != Action.RIGHT_CLICK_BLOCK) return;
+        Player player = event.getPlayer();
+        Block block = event.getClickedBlock();
+        Action action = event.getAction();
+        
+        if (block == null) return;
+        
+        // Handle Conduit Selection Mode First
+        if (plugin.getRegionManager().isConduitSelectingPlayer(player.getUniqueId())) {
+            event.setCancelled(true);
+            
+            if (action == Action.LEFT_CLICK_BLOCK || action == Action.RIGHT_CLICK_BLOCK) {
+                String regionId = plugin.getRegionManager().getConduitSelectingRegionId(player.getUniqueId());
+                if (regionId == null) {
+                    plugin.getRegionManager().removeConduitSelectingPlayer(player.getUniqueId());
+                    return;
+                }
+                
+                SavedRegion region = plugin.getRegionManager().getRegion(regionId);
+                if (region == null) {
+                    player.sendMessage("§cRegion not found.");
+                    plugin.getRegionManager().removeConduitSelectingPlayer(player.getUniqueId());
+                    return;
+                }
+
+                if (block.getX() >= region.getMinX() && block.getX() <= region.getMaxX() &&
+                    block.getZ() >= region.getMinZ() && block.getZ() <= region.getMaxZ() &&
+                    block.getWorld().getName().equals(region.getWorld())) {
+                    
+                    region.setConduitLocation(block.getLocation());
+                    plugin.getRegionManager().saveRegion(region);
+                    player.sendMessage("§aConduit extraction point set successfully for region §e" + regionId + "§a!");
+                    player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1f, 1f);
+                } else {
+                    player.sendMessage("§cThe conduit block must be inside the region boundaries!");
+                }
+                
+                plugin.getRegionManager().removeConduitSelectingPlayer(player.getUniqueId());
+            }
+            return;
+        }
+
+        if (action != Action.RIGHT_CLICK_BLOCK) return;
         
         org.bukkit.block.Block clickedBlock = event.getClickedBlock();
         if (clickedBlock == null) return;
-        
-        // Check if the clicked block is a button (or just the conduit itself based on setup)
-        // We will just check if this block's location matches any region's conduit location.
-        // It might be the button ON the conduit, or the conduit itself. 
-        // For simplicity, we check if the clicked block is within 1 block of the conduit location.
         
         Location clickLoc = clickedBlock.getLocation();
         for (SavedRegion region : plugin.getRegionManager().getRegions()) {

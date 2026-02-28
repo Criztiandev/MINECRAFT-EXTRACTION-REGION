@@ -15,12 +15,24 @@ public class SavedRegion {
     // EXTRACTION REGION FIELDS
     private RegionType type = RegionType.CHEST_REPLENISH;
     private org.bukkit.Location conduitLocation;
-    private int cooldownMinutes = 10;
+    private java.util.List<Integer> cooldownSequence = new java.util.ArrayList<>(java.util.Arrays.asList(10));
+    private int cooldownIndex = 0;
     private int maxCapacity = 5;
     private int minCapacity = 1;
     private transient int currentCapacity = -1;
     private long cooldownEndTime = 0;
     private boolean mimicEnabled = true;
+    private int mimicChance = 5; // Default 5%
+    private int announcementRadius = 100; // Radius in blocks for extraction announcements
+    private String beamColor = "#FF0000"; // Default beam color
+    private String alarmSound = "ENTITY_ENDER_DRAGON_GROWL"; // Default alarm sound
+
+    // REGION SPECIFIC EXTRACTION SPAWN
+    private String extractionSpawnWorld;
+    private double extractionSpawnX, extractionSpawnY, extractionSpawnZ;
+    private float extractionSpawnYaw, extractionSpawnPitch;
+
+    private java.util.List<Integer> possibleDurations = new java.util.ArrayList<>(java.util.Arrays.asList(5));
 
     // ENTRY REGION / DROP ZONE FIELDS
     private String dropWorld;
@@ -126,12 +138,50 @@ public class SavedRegion {
         this.conduitLocation = conduitLocation;
     }
 
-    public int getCooldownMinutes() {
-        return cooldownMinutes;
+    public java.util.List<Integer> getCooldownSequence() {
+        if (cooldownSequence == null || cooldownSequence.isEmpty()) {
+            return new java.util.ArrayList<>(java.util.Arrays.asList(10));
+        }
+        return cooldownSequence;
     }
 
-    public void setCooldownMinutes(int cooldownMinutes) {
-        this.cooldownMinutes = cooldownMinutes;
+    public void setCooldownSequence(java.util.List<Integer> cooldownSequence) {
+        if (cooldownSequence == null || cooldownSequence.isEmpty()) {
+            this.cooldownSequence = new java.util.ArrayList<>(java.util.Arrays.asList(10));
+        } else {
+            this.cooldownSequence = cooldownSequence;
+        }
+        // Normalize index
+        if (cooldownIndex >= this.cooldownSequence.size()) {
+            cooldownIndex = 0;
+        }
+    }
+
+    public int getCooldownIndex() {
+        return cooldownIndex;
+    }
+
+    public void setCooldownIndex(int cooldownIndex) {
+        this.cooldownIndex = cooldownIndex;
+    }
+
+    /**
+     * Retrieves the current cooldown in minutes and increments the index so the next call uses the next cooldown.
+     * Use this when actually applying a cooldown after a successful extraction.
+     */
+    public int getAndCycleNextCooldownMinutes() {
+        java.util.List<Integer> seq = getCooldownSequence();
+        if (cooldownIndex >= seq.size()) {
+            cooldownIndex = 0;
+        }
+        int currentCooldown = seq.get(cooldownIndex);
+        
+        cooldownIndex++;
+        if (cooldownIndex >= seq.size()) {
+            cooldownIndex = 0;
+        }
+        
+        return currentCooldown;
     }
 
     public int getMaxCapacity() {
@@ -148,6 +198,14 @@ public class SavedRegion {
 
     public void setMinCapacity(int minCapacity) {
         this.minCapacity = minCapacity;
+    }
+
+    public int getAnnouncementRadius() {
+        return announcementRadius;
+    }
+
+    public void setAnnouncementRadius(int announcementRadius) {
+        this.announcementRadius = announcementRadius;
     }
 
     public int getCurrentCapacity() {
@@ -189,6 +247,16 @@ public class SavedRegion {
         return System.currentTimeMillis() < cooldownEndTime;
     }
     
+    public int getMimicChance() {
+        return mimicChance;
+    }
+
+    public void setMimicChance(int mimicChance) {
+        if (mimicChance < 0) mimicChance = 0;
+        if (mimicChance > 100) mimicChance = 100;
+        this.mimicChance = mimicChance;
+    }
+    
     // Convert to RegionSelection to reuse LocationUtils algorithms
     public RegionSelection toRegionSelection() {
         RegionSelection selection = new RegionSelection();
@@ -198,6 +266,63 @@ public class SavedRegion {
             selection.setPos2(new org.bukkit.Location(bukkitWorld, maxX, 0, maxZ));
         }
         return selection;
+    }
+
+    // EXTRACTION SPAWN GETTERS & SETTERS
+    public org.bukkit.Location getExtractionSpawnLocation() {
+        if (extractionSpawnWorld == null) return null;
+        org.bukkit.World w = org.bukkit.Bukkit.getWorld(extractionSpawnWorld);
+        if (w == null) return null;
+        return new org.bukkit.Location(w, extractionSpawnX, extractionSpawnY, extractionSpawnZ, extractionSpawnYaw, extractionSpawnPitch);
+    }
+    
+    public void setExtractionSpawnLocation(org.bukkit.Location loc) {
+        if (loc == null) {
+            this.extractionSpawnWorld = null;
+            return;
+        }
+        this.extractionSpawnWorld = loc.getWorld().getName();
+        this.extractionSpawnX = loc.getX();
+        this.extractionSpawnY = loc.getY();
+        this.extractionSpawnZ = loc.getZ();
+        this.extractionSpawnYaw = loc.getYaw();
+        this.extractionSpawnPitch = loc.getPitch();
+    }
+    
+    public String getExtractionSpawnWorld() { return extractionSpawnWorld; }
+    public double getExtractionSpawnX() { return extractionSpawnX; }
+    public double getExtractionSpawnY() { return extractionSpawnY; }
+    public double getExtractionSpawnZ() { return extractionSpawnZ; }
+    public float getExtractionSpawnYaw() { return extractionSpawnYaw; }
+    public float getExtractionSpawnPitch() { return extractionSpawnPitch; }
+    
+    public void setExtractionSpawnWorld(String world) { this.extractionSpawnWorld = world; }
+    public void setExtractionSpawnX(double x) { this.extractionSpawnX = x; }
+    public void setExtractionSpawnY(double y) { this.extractionSpawnY = y; }
+    public void setExtractionSpawnZ(double z) { this.extractionSpawnZ = z; }
+    public void setExtractionSpawnYaw(float yaw) { this.extractionSpawnYaw = yaw; }
+    public void setExtractionSpawnPitch(float pitch) { this.extractionSpawnPitch = pitch; }
+
+    public java.util.List<Integer> getPossibleDurations() {
+        if (possibleDurations == null || possibleDurations.isEmpty()) {
+            return new java.util.ArrayList<>(java.util.Arrays.asList(5));
+        }
+        return possibleDurations;
+    }
+
+    public void setPossibleDurations(java.util.List<Integer> possibleDurations) {
+        if (possibleDurations == null || possibleDurations.isEmpty()) {
+            this.possibleDurations = new java.util.ArrayList<>(java.util.Arrays.asList(5));
+        } else {
+            this.possibleDurations = possibleDurations;
+        }
+    }
+
+    public int getRandomDurationSeconds() {
+        java.util.List<Integer> durations = getPossibleDurations();
+        if (durations.size() == 1) return durations.get(0);
+        int randomIndex = java.util.concurrent.ThreadLocalRandom.current().nextInt(durations.size());
+        return durations.get(randomIndex);
     }
 
     // DROP ZONE GETTERS & SETTERS
@@ -272,6 +397,22 @@ public class SavedRegion {
 
     public void setBlindnessSeconds(int blindnessSeconds) {
         this.blindnessSeconds = blindnessSeconds;
+    }
+
+    public String getBeamColor() {
+        return beamColor;
+    }
+
+    public void setBeamColor(String beamColor) {
+        this.beamColor = beamColor;
+    }
+
+    public String getAlarmSound() {
+        return alarmSound;
+    }
+
+    public void setAlarmSound(String alarmSound) {
+        this.alarmSound = alarmSound;
     }
 }
 

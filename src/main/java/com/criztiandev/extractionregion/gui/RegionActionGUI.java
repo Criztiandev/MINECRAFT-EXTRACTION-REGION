@@ -49,14 +49,21 @@ public class RegionActionGUI {
             overviewMeta.setDisplayName("§b§lRegion Overview");
             
             if (region.getType() == com.criztiandev.extractionregion.models.RegionType.EXTRACTION) {
+                java.util.List<Integer> seq = region.getCooldownSequence();
+                StringBuilder seqStr = new StringBuilder();
+                for (int i = 0; i < seq.size(); i++) {
+                    seqStr.append(seq.get(i));
+                    if (i < seq.size() - 1) seqStr.append(",");
+                }
+                
                 java.util.List<String> lore = new java.util.ArrayList<>(Arrays.asList(
                     "§7This region serves as an",
                     "§7Extraction Point for players.",
                     "",
                     "§eConduit Location: §f" + (region.getConduitLocation() != null ? "Set" : "Not Set"),
-                    "§eCooldown: §f" + region.getCooldownMinutes() + " Minutes",
+                    "§eCooldown Sequence: §f" + seqStr.toString() + " Mins",
                     "§eCapacity: §f" + region.getMinCapacity() + " - " + region.getMaxCapacity() + " Players",
-                    "§eMimics Enabled: §f" + (region.isMimicEnabled() ? "Yes" : "No")
+                    "§eMimics Enabled: §f" + (region.isMimicEnabled() ? "Yes (" + region.getMimicChance() + "%)" : "No")
                 ));
                 overviewMeta.setLore(lore);
             } else if (region.getType() == com.criztiandev.extractionregion.models.RegionType.ENTRY_REGION) {
@@ -139,11 +146,11 @@ public class RegionActionGUI {
             if (conduitMeta != null) {
                 conduitMeta.setDisplayName("§b§lSet Conduit Block");
                 conduitMeta.setLore(Arrays.asList(
-                    "§7Click this to receive a",
-                    "§7§bConduit Selector Tool§7.",
-                    "§7Use it to right-click the",
-                    "§7block players must look",
-                    "§7at to extract."
+                    "§7Click this to enter",
+                    "§7§bConduit Selection Mode§7.",
+                    "§7Then punch or click any",
+                    "§7block to set it as the",
+                    "§7extraction point."
                 ));
                 conduitMeta.getPersistentDataContainer().set(new NamespacedKey(plugin, "region-action"), PersistentDataType.STRING, "set_conduit");
                 conduitMeta.getPersistentDataContainer().set(new NamespacedKey(plugin, "region-id"), PersistentDataType.STRING, region.getId());

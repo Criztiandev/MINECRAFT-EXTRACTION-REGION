@@ -40,8 +40,12 @@ public class RegionCommand implements CommandExecutor {
 
         if (command.getName().equalsIgnoreCase("regionchest")) {
             if (args.length > 0 && args[0].equalsIgnoreCase("create")) {
-                plugin.getRegionManager().addCreatingPlayer(player.getUniqueId(), com.criztiandev.extractionregion.models.RegionType.CHEST_REPLENISH);
-                player.sendMessage("§aPlease type the name of your new region in chat (or type 'cancel' to abort).");
+                if (args.length > 1) {
+                    player.chat("/lr create " + args[1] + " chest");
+                } else {
+                    plugin.getRegionManager().addCreatingPlayer(player.getUniqueId(), com.criztiandev.extractionregion.models.RegionType.CHEST_REPLENISH);
+                    player.sendMessage("§aPlease type the name of your new region in chat (or type 'cancel' to abort).");
+                }
             } else {
                 new com.criztiandev.extractionregion.gui.RegionSubMenuGUI(plugin).openMenu(player, com.criztiandev.extractionregion.models.RegionType.CHEST_REPLENISH);
             }
@@ -50,8 +54,12 @@ public class RegionCommand implements CommandExecutor {
 
         if (command.getName().equalsIgnoreCase("regionentry")) {
             if (args.length > 0 && args[0].equalsIgnoreCase("create")) {
-                plugin.getRegionManager().addCreatingPlayer(player.getUniqueId(), com.criztiandev.extractionregion.models.RegionType.ENTRY_REGION);
-                player.sendMessage("§aPlease type the name of your new region in chat (or type 'cancel' to abort).");
+                if (args.length > 1) {
+                    player.chat("/lr create " + args[1] + " entry");
+                } else {
+                    plugin.getRegionManager().addCreatingPlayer(player.getUniqueId(), com.criztiandev.extractionregion.models.RegionType.ENTRY_REGION);
+                    player.sendMessage("§aPlease type the name of your new region in chat (or type 'cancel' to abort).");
+                }
             } else {
                 new com.criztiandev.extractionregion.gui.RegionSubMenuGUI(plugin).openMenu(player, com.criztiandev.extractionregion.models.RegionType.ENTRY_REGION);
             }
@@ -60,20 +68,31 @@ public class RegionCommand implements CommandExecutor {
 
         if (command.getName().equalsIgnoreCase("regionexit")) {
             if (args.length > 0 && args[0].equalsIgnoreCase("spawn")) {
+                if (args.length < 2) {
+                    player.sendMessage("§cUsage: /lrex spawn <region>");
+                    return true;
+                }
+                String regionId = args[1];
+                SavedRegion region = plugin.getRegionManager().getRegion(regionId);
+                if (region == null) {
+                    player.sendMessage("§cRegion not found.");
+                    return true;
+                }
+                
                 org.bukkit.Location loc = player.getLocation();
-                plugin.getConfig().set("extraction.spawn.world", loc.getWorld().getName());
-                plugin.getConfig().set("extraction.spawn.x", loc.getX());
-                plugin.getConfig().set("extraction.spawn.y", loc.getY());
-                plugin.getConfig().set("extraction.spawn.z", loc.getZ());
-                plugin.getConfig().set("extraction.spawn.yaw", (double) loc.getYaw());
-                plugin.getConfig().set("extraction.spawn.pitch", (double) loc.getPitch());
-                plugin.saveConfig();
-                player.sendMessage("§aExtraction spawn point set to your current location!");
+                region.setExtractionSpawnLocation(loc);
+                plugin.getRegionManager().saveRegion(region);
+
+                player.sendMessage("§aExtraction spawn point for region §e" + regionId + " §aset to your current location!");
                 return true;
             }
             if (args.length > 0 && args[0].equalsIgnoreCase("create")) {
-                plugin.getRegionManager().addCreatingPlayer(player.getUniqueId(), com.criztiandev.extractionregion.models.RegionType.EXTRACTION);
-                player.sendMessage("§aPlease type the name of your new region in chat (or type 'cancel' to abort).");
+                if (args.length > 1) {
+                    player.chat("/lr create " + args[1] + " extraction");
+                } else {
+                    plugin.getRegionManager().addCreatingPlayer(player.getUniqueId(), com.criztiandev.extractionregion.models.RegionType.EXTRACTION);
+                    player.sendMessage("§aPlease type the name of your new region in chat (or type 'cancel' to abort).");
+                }
             } else {
                 new com.criztiandev.extractionregion.gui.RegionSubMenuGUI(plugin).openMenu(player, com.criztiandev.extractionregion.models.RegionType.EXTRACTION);
             }
@@ -95,6 +114,27 @@ public class RegionCommand implements CommandExecutor {
             player.sendMessage("§7/lr rename <old_id> <new_id> §f- Rename a region.");
             player.sendMessage("§7/lr list §f- Open the region management GUI.");
             player.sendMessage("§7/lr replenish <id> §f- Force replenish chests in a region.");
+            player.sendMessage("§7/lr spawn <id> §f- Set extraction spawn for a region.");
+            return true;
+        }
+
+        if (args[0].equalsIgnoreCase("spawn")) {
+            if (args.length < 2) {
+                player.sendMessage("§cUsage: /lr spawn <region>");
+                return true;
+            }
+            String regionId = args[1];
+            SavedRegion region = plugin.getRegionManager().getRegion(regionId);
+            if (region == null) {
+                player.sendMessage("§cRegion not found.");
+                return true;
+            }
+            
+            org.bukkit.Location loc = player.getLocation();
+            region.setExtractionSpawnLocation(loc);
+            plugin.getRegionManager().saveRegion(region);
+
+            player.sendMessage("§aExtraction spawn point for region §e" + regionId + " §aset to your current location!");
             return true;
         }
 
@@ -256,7 +296,13 @@ public class RegionCommand implements CommandExecutor {
                     player.sendMessage("§7Next Reset: §fConfigured Every " + region.getResetIntervalMinutes() + "m");
                 }
             } else if (region.getType() == com.criztiandev.extractionregion.models.RegionType.EXTRACTION) {
-                player.sendMessage("§7Cooldown: §f" + region.getCooldownMinutes() + "m, Capacity: §f" + region.getMinCapacity() + "-" + region.getMaxCapacity());
+                java.util.List<Integer> seq = region.getCooldownSequence();
+                StringBuilder seqStr = new StringBuilder();
+                for (int i = 0; i < seq.size(); i++) {
+                    seqStr.append(seq.get(i));
+                    if (i < seq.size() - 1) seqStr.append(",");
+                }
+                player.sendMessage("§7Cooldown Sequence: §f" + seqStr.toString() + "m, Capacity: §f" + region.getMinCapacity() + "-" + region.getMaxCapacity());
             } else if (region.getType() == com.criztiandev.extractionregion.models.RegionType.ENTRY_REGION) {
                 player.sendMessage("§7SlowFalling: §f" + region.getSlowFallingSeconds() + "s, Blindness: §f" + region.getBlindnessSeconds() + "s");
             }

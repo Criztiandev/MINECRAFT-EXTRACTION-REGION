@@ -240,24 +240,15 @@ public class RegionInventoryListener implements Listener {
                     player.sendMessage("§aDrop Zone successfully configured for Entry Region " + regionId + "!");
                     new RegionActionGUI(plugin).openMenu(player, region);
                 } else if ("set_conduit".equals(action)) {
-                    ItemStack wand = new ItemStack(Material.END_ROD);
-                    ItemMeta wandMeta = wand.getItemMeta();
-                    if (wandMeta != null) {
-                        wandMeta.setDisplayName("§bConduit Selector Tool: " + regionId);
-                        wandMeta.getPersistentDataContainer().set(new NamespacedKey(plugin, "conduit-wand"), PersistentDataType.BYTE, (byte) 1);
-                        wandMeta.getPersistentDataContainer().set(new NamespacedKey(plugin, "region-id"), PersistentDataType.STRING, regionId);
-                        wand.setItemMeta(wandMeta);
-                    }
-                    player.getInventory().addItem(wand);
-                    player.sendMessage("§aYou have received the Conduit Selector for §e" + regionId + "§a.");
-                    player.sendMessage("§7Right-click a block inside the region to set it as the extraction point.");
                     player.closeInventory();
+                    plugin.getRegionManager().addConduitSelectingPlayer(player.getUniqueId(), regionId);
+                    player.sendMessage("§a[ExtractionRegion] §ePlease punch or click the block you want to be the conduit for §b" + regionId + "§e.");
+                    player.sendMessage("§7(Type 'cancel' in chat or switch items to abort)");
                 }
             }
             return;
         }
 
-        // Handle Extraction Settings
         if (title.startsWith(com.criztiandev.extractionregion.gui.ExtractionSettingsGUI.TITLE)) {
             if (data.has(new NamespacedKey(plugin, "extrc-action"), PersistentDataType.STRING)) {
                 String action = data.get(new NamespacedKey(plugin, "extrc-action"), PersistentDataType.STRING);
@@ -270,28 +261,147 @@ public class RegionInventoryListener implements Listener {
                 if ("back".equals(action)) {
                     new RegionActionGUI(plugin).openMenu(player, region);
                 } else if ("cooldown".equals(action)) {
-                    int c = region.getCooldownMinutes();
-                    if (c == 5) region.setCooldownMinutes(10);
-                    else if (c == 10) region.setCooldownMinutes(15);
-                    else if (c == 15) region.setCooldownMinutes(30);
-                    else if (c == 30) region.setCooldownMinutes(60);
-                    else region.setCooldownMinutes(5);
+                    if (event.getClick().isShiftClick()) {
+                        player.closeInventory();
+                        plugin.getRegionManager().addPromptState(player.getUniqueId(), "extrc_cooldown_" + regionId);
+                        player.sendMessage("§aPlease type the exact cooldown sequence (e.g. 15,25,30) for §e" + regionId + "§a:");
+                        return;
+                    }
+                    
+                    java.util.List<java.util.List<Integer>> presets = java.util.Arrays.asList(
+                        java.util.Arrays.asList(10),
+                        java.util.Arrays.asList(5, 10, 15),
+                        java.util.Arrays.asList(15, 25, 30),
+                        java.util.Arrays.asList(30, 45, 60)
+                    );
+                    
+                    java.util.List<Integer> current = region.getCooldownSequence();
+                    int currentIndex = -1;
+                    for (int i = 0; i < presets.size(); i++) {
+                        if (presets.get(i).equals(current)) {
+                            currentIndex = i;
+                            break;
+                        }
+                    }
+                    
+                    if (event.getClick().isLeftClick()) {
+                        currentIndex = (currentIndex + 1) % presets.size();
+                    } else if (event.getClick().isRightClick()) {
+                        currentIndex = currentIndex - 1;
+                        if (currentIndex < 0) currentIndex = presets.size() - 1;
+                    }
+                    
+                    region.setCooldownSequence(presets.get(currentIndex));
+                    region.setCooldownIndex(0);
                     plugin.getRegionManager().saveRegion(region);
                     new com.criztiandev.extractionregion.gui.ExtractionSettingsGUI(plugin).openMenu(player, region);
-                } else if ("capacity".equals(action)) {
-                    int min = region.getMinCapacity();
-                    int max = region.getMaxCapacity();
-                    // Sequences: 1-1 -> 1-3 -> 3-5 -> 5-5
-                    if (min == 1 && max == 1) { region.setMinCapacity(1); region.setMaxCapacity(3); }
-                    else if (min == 1 && max == 3) { region.setMinCapacity(3); region.setMaxCapacity(5); }
-                    else if (min == 3 && max == 5) { region.setMinCapacity(5); region.setMaxCapacity(5); }
-                    else { region.setMinCapacity(1); region.setMaxCapacity(1); }
+                } else if ("min_cap".equals(action)) {
+                    if (event.getClick().isShiftClick()) {
+                        player.closeInventory();
+                        plugin.getRegionManager().addPromptState(player.getUniqueId(), "extrc_min_cap_" + regionId);
+                        player.sendMessage("§aPlease type the exact MINIMUM capacity for §e" + regionId + "§a:");
+                        return;
+                    }
+                    int c = region.getMinCapacity();
+                    if (event.getClick().isLeftClick()) c++;
+                    else if (event.getClick().isRightClick()) c = Math.max(1, c - 1);
+                    if (c > region.getMaxCapacity()) region.setMaxCapacity(c);
+                    region.setMinCapacity(c);
+                    plugin.getRegionManager().saveRegion(region);
+                    new com.criztiandev.extractionregion.gui.ExtractionSettingsGUI(plugin).openMenu(player, region);
+                } else if ("max_cap".equals(action)) {
+                    if (event.getClick().isShiftClick()) {
+                        player.closeInventory();
+                        plugin.getRegionManager().addPromptState(player.getUniqueId(), "extrc_max_cap_" + regionId);
+                        player.sendMessage("§aPlease type the exact MAXIMUM capacity for §e" + regionId + "§a:");
+                        return;
+                    }
+                    int c = region.getMaxCapacity();
+                    if (event.getClick().isLeftClick()) c++;
+                    else if (event.getClick().isRightClick()) c = Math.max(1, c - 1);
+                    if (c < region.getMinCapacity()) region.setMinCapacity(c);
+                    region.setMaxCapacity(c);
+                    plugin.getRegionManager().saveRegion(region);
+                    new com.criztiandev.extractionregion.gui.ExtractionSettingsGUI(plugin).openMenu(player, region);
+                } else if ("duration".equals(action)) {
+                    if (event.getClick().isShiftClick()) {
+                        player.closeInventory();
+                        plugin.getRegionManager().addPromptState(player.getUniqueId(), "extrc_duration_" + regionId);
+                        player.sendMessage("§aPlease type the exact duration sequence (e.g. 3,5,10) for §e" + regionId + "§a:");
+                        return;
+                    }
+                    
+                    java.util.List<java.util.List<Integer>> presets = java.util.Arrays.asList(
+                        java.util.Arrays.asList(5),
+                        java.util.Arrays.asList(3, 5, 1, 10),
+                        java.util.Arrays.asList(10, 15),
+                        java.util.Arrays.asList(30)
+                    );
+                    
+                    java.util.List<Integer> current = region.getPossibleDurations();
+                    int currentIndex = -1;
+                    for (int i = 0; i < presets.size(); i++) {
+                        if (presets.get(i).equals(current)) {
+                            currentIndex = i;
+                            break;
+                        }
+                    }
+                    
+                    if (event.getClick().isLeftClick()) {
+                        currentIndex = (currentIndex + 1) % presets.size();
+                    } else if (event.getClick().isRightClick()) {
+                        currentIndex = currentIndex - 1;
+                        if (currentIndex < 0) currentIndex = presets.size() - 1;
+                    }
+                    
+                    region.setPossibleDurations(presets.get(currentIndex));
                     plugin.getRegionManager().saveRegion(region);
                     new com.criztiandev.extractionregion.gui.ExtractionSettingsGUI(plugin).openMenu(player, region);
                 } else if ("mimic".equals(action)) {
-                    region.setMimicEnabled(!region.isMimicEnabled());
+                    if (event.getClick().isShiftClick()) {
+                        player.closeInventory();
+                        plugin.getRegionManager().addPromptState(player.getUniqueId(), "extrc_mimic_" + regionId);
+                        player.sendMessage("§aPlease type the exact mimic chance percentage (0-100) for §e" + regionId + "§a:");
+                        return;
+                    }
+
+                    if (event.getClick().isLeftClick()) {
+                        region.setMimicEnabled(!region.isMimicEnabled());
+                    } else if (event.getClick().isRightClick()) {
+                        int c = region.getMimicChance();
+                        c += 5;
+                        if (c > 100) c = 0;
+                        region.setMimicChance(c);
+                    }
+                    
                     plugin.getRegionManager().saveRegion(region);
                     new com.criztiandev.extractionregion.gui.ExtractionSettingsGUI(plugin).openMenu(player, region);
+                } else if ("radius".equals(action)) {
+                    if (event.getClick().isShiftClick()) {
+                        player.closeInventory();
+                        plugin.getRegionManager().addPromptState(player.getUniqueId(), "extrc_radius_" + regionId);
+                        player.sendMessage("§aPlease type the exact announcement radius (0 for global) for §e" + regionId + "§a:");
+                        return;
+                    }
+                    
+                    int r = region.getAnnouncementRadius();
+                    if (event.getClick().isLeftClick()) {
+                        r += 10;
+                    } else if (event.getClick().isRightClick()) {
+                        r = Math.max(0, r - 10);
+                    }
+                    
+                    region.setAnnouncementRadius(r);
+                    plugin.getRegionManager().saveRegion(region);
+                    new com.criztiandev.extractionregion.gui.ExtractionSettingsGUI(plugin).openMenu(player, region);
+                } else if ("beam".equals(action)) {
+                    player.closeInventory();
+                    plugin.getRegionManager().addPromptState(player.getUniqueId(), "extrc_beam_" + regionId);
+                    player.sendMessage("§aPlease type the hex color (e.g., #FF0000) for the beam of §e" + regionId + "§a:");
+                } else if ("alarm".equals(action)) {
+                    player.closeInventory();
+                    plugin.getRegionManager().addPromptState(player.getUniqueId(), "extrc_alarm_" + regionId);
+                    player.sendMessage("§aPlease type the Sound enum (e.g., ENTITY_ENDER_DRAGON_GROWL) for the alarm of §e" + regionId + "§a:");
                 }
             }
             return;

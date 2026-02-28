@@ -21,6 +21,8 @@ public class RegionManager {
     private final Map<String, SavedRegion> regions = new ConcurrentHashMap<>();
     private final Map<UUID, RegionType> creatingPlayers = new ConcurrentHashMap<>();
     private final Map<UUID, String> timerConfiguringPlayers = new ConcurrentHashMap<>();
+    private final Map<UUID, String> conduitSelectingPlayers = new ConcurrentHashMap<>();
+    private final Map<UUID, String> promptStates = new ConcurrentHashMap<>();
 
     public RegionManager(ExtractionRegionPlugin plugin) {
         this.plugin = plugin;
@@ -143,6 +145,39 @@ public class RegionManager {
 
     public String getTimerConfiguringRegionId(UUID uuid) {
         return timerConfiguringPlayers.get(uuid);
+    }
+    
+    public void addConduitSelectingPlayer(UUID uuid, String regionId) {
+        conduitSelectingPlayers.put(uuid, regionId);
+    }
+
+    public void removeConduitSelectingPlayer(UUID uuid) {
+        conduitSelectingPlayers.remove(uuid);
+    }
+
+    public boolean isConduitSelectingPlayer(UUID uuid) {
+        return conduitSelectingPlayers.containsKey(uuid);
+    }
+
+    public String getConduitSelectingRegionId(UUID uuid) {
+        return conduitSelectingPlayers.get(uuid);
+    }
+    
+    // Generic Prompt States (e.g., "extrc_cooldown_myregion")
+    public void addPromptState(UUID uuid, String state) {
+        promptStates.put(uuid, state);
+    }
+
+    public void removePromptState(UUID uuid) {
+        promptStates.remove(uuid);
+    }
+
+    public boolean hasPromptState(UUID uuid) {
+        return promptStates.containsKey(uuid);
+    }
+
+    public String getPromptState(UUID uuid) {
+        return promptStates.get(uuid);
     }
 
     public RegionSelection getSelection(UUID uuid) {
