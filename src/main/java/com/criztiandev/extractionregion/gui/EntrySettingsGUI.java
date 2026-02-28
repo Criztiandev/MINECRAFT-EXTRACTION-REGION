@@ -67,6 +67,23 @@ public class EntrySettingsGUI {
         }
         inv.setItem(15, blindItem);
 
+        // Slot 13: Entry Cooldown
+        ItemStack cooldownItem = new ItemStack(Material.CLOCK);
+        ItemMeta cooldownMeta = cooldownItem.getItemMeta();
+        if (cooldownMeta != null) {
+            cooldownMeta.setDisplayName("§6§lEntry Cooldown");
+            cooldownMeta.setLore(Arrays.asList(
+                "§7Current: §f" + region.getEntryCooldownMinutes() + " Minutes",
+                "",
+                "§eClick to cycle:",
+                "§e0m -> 1m -> 5m -> 10m -> 30m"
+            ));
+            cooldownMeta.getPersistentDataContainer().set(new NamespacedKey(plugin, "entry-action"), PersistentDataType.STRING, "cooldown");
+            cooldownMeta.getPersistentDataContainer().set(new NamespacedKey(plugin, "region-id"), PersistentDataType.STRING, region.getId());
+            cooldownItem.setItemMeta(cooldownMeta);
+        }
+        inv.setItem(13, cooldownItem);
+
         // Back Button (Slot 18)
         ItemStack backItem = new ItemStack(Material.ARROW);
         ItemMeta backMeta = backItem.getItemMeta();

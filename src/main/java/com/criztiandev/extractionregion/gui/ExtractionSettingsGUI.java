@@ -167,6 +167,37 @@ public class ExtractionSettingsGUI {
         }
         inv.setItem(16, radiusItem);
 
+        // Slot 17: Destination Settings
+        ItemStack destItem = new ItemStack(Material.ENDER_PEARL);
+        ItemMeta destMeta = destItem.getItemMeta();
+        if (destMeta != null) {
+            if (region.isExtractionUseCommand()) {
+                destMeta.setDisplayName("§5§lSpawn Destination [Command Mode]");
+                destMeta.setLore(Arrays.asList(
+                    "§7Current Command: §f" + region.getExtractionCommand(),
+                    "",
+                    "§eLeft-Click: §fToggle to Location Mode",
+                    "§dShift-Click: §fSet command in chat"
+                ));
+            } else {
+                destMeta.setDisplayName("§5§lSpawn Destination [Location Mode]");
+                String locStr = (region.getExtractionSpawnWorld() != null) ?
+                    String.format("%s (%.1f, %.1f, %.1f)", region.getExtractionSpawnWorld(), region.getExtractionSpawnX(), region.getExtractionSpawnY(), region.getExtractionSpawnZ()) :
+                    "Not Set (Checks global config)";
+                destMeta.setLore(Arrays.asList(
+                    "§7Current: §f" + locStr,
+                    "",
+                    "§eLeft-Click: §fToggle to Command Mode",
+                    "§cRight-Click: §fSet to exactly where you are standing",
+                    "§dShift-Click: §fSet specific XYZ coordinates in chat"
+                ));
+            }
+            destMeta.getPersistentDataContainer().set(new NamespacedKey(plugin, "extrc-action"), PersistentDataType.STRING, "destination");
+            destMeta.getPersistentDataContainer().set(new NamespacedKey(plugin, "region-id"), PersistentDataType.STRING, region.getId());
+            destItem.setItemMeta(destMeta);
+        }
+        inv.setItem(17, destItem);
+
         // Slot 24: Beam Color
         ItemStack beamItem = new ItemStack(Material.RED_DYE);
         ItemMeta beamMeta = beamItem.getItemMeta();
@@ -200,6 +231,24 @@ public class ExtractionSettingsGUI {
             alarmItem.setItemMeta(alarmMeta);
         }
         inv.setItem(25, alarmItem);
+
+        // Slot 26: Hologram Settings
+        ItemStack holoItem = new ItemStack(Material.ARMOR_STAND);
+        ItemMeta holoMeta = holoItem.getItemMeta();
+        if (holoMeta != null) {
+            holoMeta.setDisplayName("§d§lHologram Options");
+            holoMeta.setLore(Arrays.asList(
+                "§7Edit the position offsets",
+                "§7and font scale for the",
+                "§7extraction hologram.",
+                "",
+                "§eLeft-Click: §fOpen Menu"
+            ));
+            holoMeta.getPersistentDataContainer().set(new NamespacedKey(plugin, "extrc-action"), PersistentDataType.STRING, "holo_menu");
+            holoMeta.getPersistentDataContainer().set(new NamespacedKey(plugin, "region-id"), PersistentDataType.STRING, region.getId());
+            holoItem.setItemMeta(holoMeta);
+        }
+        inv.setItem(26, holoItem);
 
         // Back Button (Slot 18)
         ItemStack backItem = new ItemStack(Material.ARROW);

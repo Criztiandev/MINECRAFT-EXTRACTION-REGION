@@ -278,6 +278,28 @@ public class RegionActionGUI {
             inv.setItem(15, manageChestsItem);
         }
         
+        // Slot 25: Bypass Cooldown Toggle
+        if (region.getType() == com.criztiandev.extractionregion.models.RegionType.EXTRACTION) {
+            ItemStack bypassItem = new ItemStack(region.isBypassCooldown() ? Material.LIME_DYE : Material.GRAY_DYE);
+            ItemMeta bypassMeta = bypassItem.getItemMeta();
+            if (bypassMeta != null) {
+                bypassMeta.setDisplayName("§e§lBypass Cooldown (Test Mode)");
+                bypassMeta.setLore(Arrays.asList(
+                    "§7If enabled, you can extract",
+                    "§7consecutively without waiting.",
+                    "§7Useful for admin testing.",
+                    "",
+                    "§7Current: " + (region.isBypassCooldown() ? "§aEnabled" : "§cDisabled"),
+                    "",
+                    "§eClick to toggle"
+                ));
+                bypassMeta.getPersistentDataContainer().set(new NamespacedKey(plugin, "region-action"), PersistentDataType.STRING, "bypass");
+                bypassMeta.getPersistentDataContainer().set(new NamespacedKey(plugin, "region-id"), PersistentDataType.STRING, region.getId());
+                bypassItem.setItemMeta(bypassMeta);
+            }
+            inv.setItem(25, bypassItem);
+        }
+        
         ItemStack backItem = new ItemStack(Material.ARROW);
         ItemMeta backMeta = backItem.getItemMeta();
         if (backMeta != null) {

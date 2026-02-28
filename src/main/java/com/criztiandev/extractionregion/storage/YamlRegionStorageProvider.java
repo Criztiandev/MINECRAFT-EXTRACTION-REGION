@@ -100,6 +100,11 @@ public class YamlRegionStorageProvider implements RegionStorageProvider {
                 if (sec.contains("beamColor")) region.setBeamColor(sec.getString("beamColor"));
                 if (sec.contains("alarmSound")) region.setAlarmSound(sec.getString("alarmSound"));
 
+                if (sec.contains("hologramOffsetX")) region.setHologramOffsetX(sec.getDouble("hologramOffsetX"));
+                if (sec.contains("hologramOffsetY")) region.setHologramOffsetY(sec.getDouble("hologramOffsetY"));
+                if (sec.contains("hologramOffsetZ")) region.setHologramOffsetZ(sec.getDouble("hologramOffsetZ"));
+                if (sec.contains("hologramScale")) region.setHologramScale(sec.getDouble("hologramScale"));
+
                 if (sec.contains("drop")) {
                     region.setDropWorld(sec.getString("drop.world"));
                     region.setDropMinX(sec.getInt("drop.minX"));
@@ -118,6 +123,13 @@ public class YamlRegionStorageProvider implements RegionStorageProvider {
                     region.setExtractionSpawnYaw((float) sec.getDouble("extractionSpawn.yaw"));
                     region.setExtractionSpawnPitch((float) sec.getDouble("extractionSpawn.pitch"));
                 }
+                
+                region.setExtractionUseCommand(sec.getBoolean("extractionUseCommand", false));
+                if (sec.contains("extractionCommand")) {
+                    region.setExtractionCommand(sec.getString("extractionCommand"));
+                }
+                
+                if (sec.contains("bypassCooldown")) region.setBypassCooldown(sec.getBoolean("bypassCooldown", false));
                 
                 if (sec.contains("possibleDurations")) {
                     String seqStr = sec.getString("possibleDurations");
@@ -192,9 +204,15 @@ public class YamlRegionStorageProvider implements RegionStorageProvider {
             config.set(path + ".cooldownEndTime", region.getCooldownEndTime());
             config.set(path + ".mimicEnabled", region.isMimicEnabled());
             config.set(path + ".mimicChance", region.getMimicChance());
+            config.set(path + ".bypassCooldown", region.isBypassCooldown());
             config.set(path + ".announcementRadius", region.getAnnouncementRadius());
             config.set(path + ".beamColor", region.getBeamColor());
             config.set(path + ".alarmSound", region.getAlarmSound());
+
+            config.set(path + ".hologramOffsetX", region.getHologramOffsetX());
+            config.set(path + ".hologramOffsetY", region.getHologramOffsetY());
+            config.set(path + ".hologramOffsetZ", region.getHologramOffsetZ());
+            config.set(path + ".hologramScale", region.getHologramScale());
 
             if (region.getDropWorld() != null) {
                 config.set(path + ".drop.world", region.getDropWorld());
@@ -219,6 +237,8 @@ public class YamlRegionStorageProvider implements RegionStorageProvider {
                 config.set(path + ".extractionSpawn", null);
             }
             
+            config.set(path + ".extractionUseCommand", region.isExtractionUseCommand());
+            config.set(path + ".extractionCommand", region.getExtractionCommand());
             java.util.List<Integer> dSeq = region.getPossibleDurations();
             StringBuilder dSeqBuilder = new StringBuilder();
             for (int i = 0; i < dSeq.size(); i++) {

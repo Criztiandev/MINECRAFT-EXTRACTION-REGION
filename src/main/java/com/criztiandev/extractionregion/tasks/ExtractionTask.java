@@ -51,8 +51,10 @@ public class ExtractionTask extends BukkitRunnable {
                 continue;
             }
 
+            boolean bypassCooldown = session.region.isBypassCooldown();
+
             // Cancel if area is on cooldown
-            if (session.region.isOnCooldown()) {
+            if (session.region.isOnCooldown() && !bypassCooldown) {
                 sendActionBar(player, "§cExtraction point is on cooldown!");
                 it.remove();
                 continue;
@@ -86,7 +88,7 @@ public class ExtractionTask extends BukkitRunnable {
             if (elapsed >= requiredTime) {
                 // Extract successful
                 it.remove();
-                executeExtraction(player, session.region);
+                executeExtraction(player, session.region, bypassCooldown);
             } else {
                 // Progress
                 int secondsLeft = (int) Math.ceil((requiredTime - elapsed) / 1000.0);
@@ -125,13 +127,14 @@ public class ExtractionTask extends BukkitRunnable {
                     org.bukkit.Color color = org.bukkit.Color.fromRGB(awtColor.getRed(), awtColor.getGreen(), awtColor.getBlue());
                     org.bukkit.Particle.DustOptions dust = new org.bukkit.Particle.DustOptions(color, 2.0f);
                     
-                    // Spawn particles upwards to simulate a solid beam
-                    for (double y = 0; y < 20; y += 0.2) {
+                    // Spawn particles upwards to simulate a solid beam to the sky limit
+                    double maxOffset = world.getMaxHeight() - center.getY();
+                    for (double y = 0; y < maxOffset; y += 1.0) {
                         try {
                             world.spawnParticle(org.bukkit.Particle.DUST, center.clone().add(0, y, 0), 2, 0.1, 0.0, 0.1, 0.0, dust);
                         } catch (Exception ignored) {}
                         
-                        if (y % 1.0 < 0.2) {
+                        if (y % 2.0 < 1.0) {
                             world.spawnParticle(org.bukkit.Particle.WITCH, center.clone().add(0, y, 0), 1, 0.1, 0.0, 0.1, 0.0);
                         }
                     }
@@ -139,6 +142,9 @@ public class ExtractionTask extends BukkitRunnable {
                     double angle = (elapsed / 200.0) % (2 * Math.PI);
                     world.spawnParticle(org.bukkit.Particle.FLAME, player.getLocation().add(Math.cos(angle), 1.0, Math.sin(angle)), 0, 0, 0, 0, 0);
                     world.spawnParticle(org.bukkit.Particle.FLAME, player.getLocation().add(Math.cos(angle + Math.PI), 1.0, Math.sin(angle + Math.PI)), 0, 0, 0, 0, 0);
+                    
+                    // CMI-style Enchantment sequence
+                    world.spawnParticle(org.bukkit.Particle.ENCHANT, player.getLocation().add(0, 1.0, 0), 10, 0.5, 1.0, 0.5, 0.1);
                 }
             }
         }
@@ -147,7 +153,9 @@ public class ExtractionTask extends BukkitRunnable {
     public void handleButtonPress(Player player, SavedRegion region) {
         long now = System.currentTimeMillis();
         
-        if (region.isOnCooldown()) {
+        boolean bypassCooldown = region.isBypassCooldown();
+        
+        if (region.isOnCooldown() && !bypassCooldown) {
             long remaining = (region.getCooldownEndTime() - now) / 1000;
             player.sendMessage("§cExtraction point is on cooldown for " + remaining + "s");
             return;
@@ -216,10 +224,16 @@ public class ExtractionTask extends BukkitRunnable {
         return x >= region.getMinX() && x <= region.getMaxX() &&
                z >= region.getMinZ() && z <= region.getMaxZ();
     }
-
-    private void executeExtraction(Player activator, SavedRegion region) {
-        // Find configured spawn
-        Location spawn = region.getExtractionSpawnLocation();
+    private void executeExtraction(Player activator, SavedRegion region, boolean isBypassed) {
+        // Find configured spawn fallback (only if not using commands)
+        Location spawn = plugin.getConfig().getLocation("extraction.spawn");
+        if (region.getExtractionSpawnWorld() != null) {
+            org.bukkit.World world = Bukkit.getWorld(region.getExtractionSpawnWorld());
+            if (world != null) {
+                spawn = new Location(world, region.getExtractionSpawnX(), region.getExtractionSpawnY(), region.getExtractionSpawnZ(),
+                                     region.getExtractionSpawnYaw(), region.getExtractionSpawnPitch());
+            }
+        }
         
         if (spawn == null) {
             String w = plugin.getConfig().getString("extraction.spawn.world");
@@ -245,11 +259,35 @@ public class ExtractionTask extends BukkitRunnable {
 
         int extractedCount = 0;
         String successMsg = plugin.getConfig().getString("extraction.messages.success", "&aExtraction successful!");
-        // Teleport everyone inside the extraction zone
+        // Teleport or Execute commands for everyone inside the extraction zone
         for (Player p : Bukkit.getOnlinePlayers()) {
             if (isInRegion(p.getLocation(), region)) {
-                p.teleport(spawn);
+                if (region.isExtractionUseCommand()) {
+                    String cmd = region.getExtractionCommand().replace("%player%", p.getName()).trim();
+                    boolean runAsConsole = cmd.toUpperCase().startsWith("[CONSOLE]");
+                    if (runAsConsole) cmd = cmd.substring(9).trim();
+                    if (cmd.startsWith("/")) cmd = cmd.substring(1);
+                    
+                    if (runAsConsole) {
+                        Bukkit.dispatchCommand(Bukkit.getConsoleSender(), cmd);
+                    } else {
+                        p.performCommand(cmd);
+                    }
+                } else {
+                    p.teleport(spawn);
+                }
+                
                 p.sendMessage(successMsg.replace("&", "§"));
+                
+                // Send Success Title
+                String title = plugin.getConfig().getString("extraction.messages.success_title.title", "&a&lEXTRACTED!");
+                String subTitle = plugin.getConfig().getString("extraction.messages.success_title.subtitle", "&7You have been successfully extracted.");
+                int fadeIn = plugin.getConfig().getInt("extraction.messages.success_title.fade_in", 10);
+                int stay = plugin.getConfig().getInt("extraction.messages.success_title.stay", 70);
+                int fadeOut = plugin.getConfig().getInt("extraction.messages.success_title.fade_out", 20);
+                
+                p.sendTitle(title.replace("&", "§"), subTitle.replace("&", "§"), fadeIn, stay, fadeOut);
+                
                 p.playSound(p.getLocation(), Sound.ENTITY_ENDERMAN_TELEPORT, 1f, 1f);
                 extractedCount++;
                 
@@ -258,7 +296,9 @@ public class ExtractionTask extends BukkitRunnable {
             }
         }
 
-        applyCapacityAndCooldown(region, false);
+        if (!isBypassed) {
+            applyCapacityAndCooldown(region, false);
+        }
     }
 
     private void applyCapacityAndCooldown(SavedRegion region, boolean isMimic) {
@@ -266,15 +306,12 @@ public class ExtractionTask extends BukkitRunnable {
         int currentCap = region.getCurrentCapacity();
         currentCap--;
         
-        // Cooldown triggers immediately if capacity is going to be 0 or if mimic disables the point
-        int nextCooldown = region.getCooldownSequence().get(region.getCooldownIndex());
+        // Cooldown triggers immediately on EVERY extraction
+        int nextCooldown = region.getAndCycleNextCooldownMinutes();
+        region.setCooldownEndTime(System.currentTimeMillis() + ((long) nextCooldown * 60 * 1000));
         
         if (currentCap <= 0 || isMimic) {
-            nextCooldown = region.getAndCycleNextCooldownMinutes();
-            region.setCooldownEndTime(System.currentTimeMillis() + ((long) nextCooldown * 60 * 1000));
-            region.setCurrentCapacity(-1); // Resets capacity roll
-            plugin.getRegionManager().saveRegion(region); // persist
-            
+            region.setCurrentCapacity(-1); // Resets capacity roll for when it comes off cooldown
             if (!isMimic) {
                 String departedMsg = plugin.getConfig().getString("extraction.messages.departed", "&8[&c!&8] &cExtraction point &b%region% &chas departed!");
                 Bukkit.broadcastMessage(departedMsg.replace("%region%", region.getId()).replace("&", "§"));
@@ -282,6 +319,8 @@ public class ExtractionTask extends BukkitRunnable {
         } else {
             region.setCurrentCapacity(currentCap);
         }
+        
+        plugin.getRegionManager().saveRegion(region); // persist
         
         if (!isMimic) {
             // Announce extraction success to radius
@@ -319,7 +358,7 @@ public class ExtractionTask extends BukkitRunnable {
         }
         
         for (int i = 0; i < spawnCount; i++) {
-            org.bukkit.entity.Entity entity = region.getConduitLocation().getWorld().spawnEntity(region.getConduitLocation().add(0, 1.5, 0), type);
+            org.bukkit.entity.Entity entity = region.getConduitLocation().getWorld().spawnEntity(region.getConduitLocation().clone().add(0, 1.5, 0), type);
             entity.setCustomName(customName.replace("&", "§"));
             entity.setCustomNameVisible(true);
             
@@ -368,7 +407,8 @@ public class ExtractionTask extends BukkitRunnable {
     }
     
     private void spawnFireworks(Location loc) {
-        Firework fw = (Firework) loc.getWorld().spawnEntity(loc.add(0, 1, 0), EntityType.FIREWORK_ROCKET);
+        Location spawnLoc = loc.clone().add(0, 1, 0);
+        Firework fw = (Firework) loc.getWorld().spawnEntity(spawnLoc, EntityType.FIREWORK_ROCKET);
         FireworkMeta fwm = fw.getFireworkMeta();
         
         java.util.List<String> hexColors = plugin.getConfig().getStringList("extraction.fireworks.colors");

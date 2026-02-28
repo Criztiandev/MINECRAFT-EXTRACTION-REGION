@@ -7,7 +7,8 @@ import com.criztiandev.extractionregion.utils.TimeUtil;
 import com.criztiandev.extractionregion.tasks.ExtractionTask;
 import com.criztiandev.extractionregion.tasks.ExtractionTask.ExtractionSession;
 import org.bukkit.Location;
-import org.bukkit.entity.ArmorStand;
+import org.bukkit.entity.TextDisplay;
+import org.bukkit.util.Transformation;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -18,7 +19,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class HologramManager {
 
     private final ExtractionRegionPlugin plugin;
-    private final Map<String, List<ArmorStand>> activeHolograms = new ConcurrentHashMap<>();
+    private final Map<String, TextDisplay> activeHolograms = new ConcurrentHashMap<>();
 
     public HologramManager(ExtractionRegionPlugin plugin) {
         this.plugin = plugin;
@@ -32,23 +33,38 @@ public class HologramManager {
             }
 
             List<String> lines = getLinesForRegion(region);
-            List<ArmorStand> stands = activeHolograms.get(region.getId());
+            TextDisplay display = activeHolograms.get(region.getId());
+            String fullText = String.join("\n", lines);
 
-            if (stands == null || stands.size() != lines.size()) {
-                // Recreate from scratch if size mismatch or doesn't exist
+            if (display == null || !display.isValid()) {
                 removeHologram(region.getId());
-                spawnHologram(region, lines);
-            } else {
-                // Update existing text
-                for (int i = 0; i < lines.size(); i++) {
-                    ArmorStand stand = stands.get(i);
-                    if (stand.isValid()) {
-                        stand.setCustomName(lines.get(i));
-                    } else {
-                        // If a stand was destroyed by external forces, trigger a full recreate next tick
-                        removeHologram(region.getId());
-                        break;
+                
+                // Prevent duplicate ghost holograms by ensuring the chunk is actually loaded
+                Location cLoc = region.getConduitLocation();
+                if (cLoc.getWorld() != null && cLoc.getWorld().isChunkLoaded(cLoc.getBlockX() >> 4, cLoc.getBlockZ() >> 4)) {
+                    // One final global sweep in a tiny radius before spawning to eradicate old valid ghosts in unloaded chunks
+                    org.bukkit.NamespacedKey key = new org.bukkit.NamespacedKey(plugin, "extraction_hologram");
+                    for (org.bukkit.entity.Entity e : cLoc.getWorld().getNearbyEntities(cLoc, 2.0, 5.0, 2.0)) {
+                        if (e instanceof TextDisplay && e.getPersistentDataContainer().has(key, org.bukkit.persistence.PersistentDataType.BYTE)) {
+                            e.remove();
+                        }
                     }
+                    spawnHologram(region, fullText);
+                }
+            } else {
+                display.setText(fullText);
+                
+                // Allow dynamic updating of position and scale through the GUI
+                Location baseLoc = region.getConduitLocation().clone().add(region.getHologramOffsetX(), region.getHologramOffsetY(), region.getHologramOffsetZ());
+                if (display.getLocation().distanceSquared(baseLoc) > 0.01) {
+                    display.teleport(baseLoc);
+                }
+                
+                double scale = region.getHologramScale();
+                Transformation t = display.getTransformation();
+                if (Math.abs(t.getScale().x() - scale) > 0.01) {
+                    t.getScale().set((float) scale, (float) scale, (float) scale);
+                    display.setTransformation(t);
                 }
             }
         }
@@ -99,45 +115,77 @@ public class HologramManager {
         }
     }
 
-    private void spawnHologram(SavedRegion region, List<String> lines) {
-        Location baseLoc = region.getConduitLocation().clone().add(0.5, 1.2 + (lines.size() * 0.25), 0.5);
-        List<ArmorStand> spawned = new ArrayList<>();
-
-        for (String line : lines) {
-            if (baseLoc.getWorld() != null) {
-                ArmorStand stand = baseLoc.getWorld().spawn(baseLoc, ArmorStand.class, as -> {
-                    as.setVisible(false);
-                    as.setMarker(true);
-                    as.setGravity(false);
-                    as.setPersistent(false);
-                    as.setCustomName(line);
-                    as.setCustomNameVisible(true);
-                });
-                spawned.add(stand);
-            }
-            baseLoc.subtract(0, 0.25, 0);
+    private void spawnHologram(SavedRegion region, String text) {
+        Location baseLoc = region.getConduitLocation().clone().add(region.getHologramOffsetX(), region.getHologramOffsetY(), region.getHologramOffsetZ());
+        
+        if (baseLoc.getWorld() != null) {
+            TextDisplay display = baseLoc.getWorld().spawn(baseLoc, TextDisplay.class, td -> {
+                td.setPersistent(false);
+                td.getPersistentDataContainer().set(new org.bukkit.NamespacedKey(plugin, "extraction_hologram"), org.bukkit.persistence.PersistentDataType.BYTE, (byte) 1);
+                td.setText(text);
+                td.setAlignment(TextDisplay.TextAlignment.CENTER);
+                td.setBillboard(org.bukkit.entity.Display.Billboard.CENTER);
+                td.setDefaultBackground(false);
+                td.setBackgroundColor(org.bukkit.Color.fromARGB(100, 0, 0, 0));
+                
+                double scale = region.getHologramScale();
+                Transformation t = td.getTransformation();
+                t.getScale().set((float) scale, (float) scale, (float) scale);
+                td.setTransformation(t);
+            });
+            activeHolograms.put(region.getId(), display);
         }
-
-        activeHolograms.put(region.getId(), spawned);
     }
 
     public void removeHologram(String regionId) {
-        List<ArmorStand> stands = activeHolograms.remove(regionId);
-        if (stands != null) {
-            for (ArmorStand stand : stands) {
-                if (stand.isValid()) {
-                    stand.remove();
+        TextDisplay display = activeHolograms.remove(regionId);
+        if (display != null && display.isValid()) {
+            display.remove();
+        }
+    }
+
+    public void cleanupOldHolograms() {
+        org.bukkit.NamespacedKey key = new org.bukkit.NamespacedKey(plugin, "extraction_hologram");
+        
+        // 1. Clean nearby rogue marker ArmorStands near conduits (legacy holograms without PDC)
+        for (SavedRegion region : plugin.getRegionManager().getRegions()) {
+            Location loc = region.getConduitLocation();
+            if (loc != null && loc.getWorld() != null) {
+                for (org.bukkit.entity.Entity entity : loc.getWorld().getNearbyEntities(loc, 10, 20, 10)) {
+                    if (entity instanceof org.bukkit.entity.ArmorStand) {
+                        org.bukkit.entity.ArmorStand as = (org.bukkit.entity.ArmorStand) entity;
+                        if (as.isMarker() && !as.isVisible() && !as.hasGravity() && as.isCustomNameVisible()) {
+                            as.remove();
+                        }
+                    } else if (entity instanceof TextDisplay) {
+                        // Also remove any rogue text displays near the conduit just in case
+                        if (entity.getPersistentDataContainer().has(key, org.bukkit.persistence.PersistentDataType.BYTE)) {
+                            entity.remove();
+                        }
+                    }
+                }
+            }
+        }
+        
+        // 2. Global sweep for anything with the exact PDC key
+        for (org.bukkit.World world : org.bukkit.Bukkit.getWorlds()) {
+            for (org.bukkit.entity.Entity entity : world.getEntitiesByClass(org.bukkit.entity.ArmorStand.class)) {
+                if (entity.getPersistentDataContainer().has(key, org.bukkit.persistence.PersistentDataType.BYTE)) {
+                    entity.remove();
+                }
+            }
+            for (org.bukkit.entity.Entity entity : world.getEntitiesByClass(TextDisplay.class)) {
+                if (entity.getPersistentDataContainer().has(key, org.bukkit.persistence.PersistentDataType.BYTE)) {
+                    entity.remove();
                 }
             }
         }
     }
 
     public void removeAll() {
-        for (List<ArmorStand> stands : activeHolograms.values()) {
-            for (ArmorStand stand : stands) {
-                if (stand.isValid()) {
-                    stand.remove();
-                }
+        for (TextDisplay display : activeHolograms.values()) {
+            if (display.isValid()) {
+                display.remove();
             }
         }
         activeHolograms.clear();

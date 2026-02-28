@@ -40,6 +40,7 @@ public class RegionInventoryListener implements Listener {
                               title.startsWith(com.criztiandev.extractionregion.gui.EntrySettingsGUI.TITLE) ||
                               title.startsWith(com.criztiandev.extractionregion.gui.RegionSubMenuGUI.TITLE_PREFIX) ||
                               title.startsWith(com.criztiandev.extractionregion.gui.RegionChestsGUI.TITLE) ||
+                              title.startsWith(com.criztiandev.extractionregion.gui.HologramSettingsGUI.TITLE) ||
                               title.equals(com.criztiandev.extractionregion.gui.WandMenuGUI.TITLE) ||
                               title.equals(plugin.getConfig().getString("region-gui.title", "§8▶ §dConfigure Auto Spawns").replace("&", "§"));
 
@@ -244,6 +245,10 @@ public class RegionInventoryListener implements Listener {
                     plugin.getRegionManager().addConduitSelectingPlayer(player.getUniqueId(), regionId);
                     player.sendMessage("§a[ExtractionRegion] §ePlease punch or click the block you want to be the conduit for §b" + regionId + "§e.");
                     player.sendMessage("§7(Type 'cancel' in chat or switch items to abort)");
+                } else if ("bypass".equals(action)) {
+                    region.setBypassCooldown(!region.isBypassCooldown());
+                    plugin.getRegionManager().saveRegion(region);
+                    new com.criztiandev.extractionregion.gui.RegionActionGUI(plugin).openMenu(player, region);
                 }
             }
             return;
@@ -394,6 +399,39 @@ public class RegionInventoryListener implements Listener {
                     region.setAnnouncementRadius(r);
                     plugin.getRegionManager().saveRegion(region);
                     new com.criztiandev.extractionregion.gui.ExtractionSettingsGUI(plugin).openMenu(player, region);
+                } else if ("destination".equals(action)) {
+                    if (region.isExtractionUseCommand()) {
+                        if (event.getClick().isLeftClick() && !event.getClick().isShiftClick()) {
+                            region.setExtractionUseCommand(false);
+                            plugin.getRegionManager().saveRegion(region);
+                            new com.criztiandev.extractionregion.gui.ExtractionSettingsGUI(plugin).openMenu(player, region);
+                        } else if (event.getClick().isShiftClick()) {
+                            player.closeInventory();
+                            plugin.getRegionManager().addPromptState(player.getUniqueId(), "extrc_dest_cmd_" + regionId);
+                            player.sendMessage("§a[ExtractionRegion] §ePlease type the exact command to run (e.g. 'spawn %player%' or '[CONSOLE] mvtp %player% world') for §b" + regionId + "§e:");
+                        }
+                    } else {
+                        if (event.getClick().isLeftClick() && !event.getClick().isShiftClick()) {
+                            region.setExtractionUseCommand(true);
+                            plugin.getRegionManager().saveRegion(region);
+                            new com.criztiandev.extractionregion.gui.ExtractionSettingsGUI(plugin).openMenu(player, region);
+                        } else if (event.getClick().isRightClick() && !event.getClick().isShiftClick()) {
+                            org.bukkit.Location loc = player.getLocation();
+                            region.setExtractionSpawnWorld(loc.getWorld().getName());
+                            region.setExtractionSpawnX(loc.getX());
+                            region.setExtractionSpawnY(loc.getY());
+                            region.setExtractionSpawnZ(loc.getZ());
+                            region.setExtractionSpawnYaw(loc.getYaw());
+                            region.setExtractionSpawnPitch(loc.getPitch());
+                            plugin.getRegionManager().saveRegion(region);
+                            new com.criztiandev.extractionregion.gui.ExtractionSettingsGUI(plugin).openMenu(player, region);
+                            player.sendMessage("§aExtraction spawn successfully set to your current location!");
+                        } else if (event.getClick().isShiftClick()) {
+                            player.closeInventory();
+                            plugin.getRegionManager().addPromptState(player.getUniqueId(), "extrc_dest_loc_" + regionId);
+                            player.sendMessage("§a[ExtractionRegion] §ePlease type the exact coordinates in the format 'world,x,y,z' for §b" + regionId + "§e:");
+                        }
+                    }
                 } else if ("beam".equals(action)) {
                     player.closeInventory();
                     plugin.getRegionManager().addPromptState(player.getUniqueId(), "extrc_beam_" + regionId);
@@ -402,6 +440,81 @@ public class RegionInventoryListener implements Listener {
                     player.closeInventory();
                     plugin.getRegionManager().addPromptState(player.getUniqueId(), "extrc_alarm_" + regionId);
                     player.sendMessage("§aPlease type the Sound enum (e.g., ENTITY_ENDER_DRAGON_GROWL) for the alarm of §e" + regionId + "§a:");
+                } else if ("holo_menu".equals(action)) {
+                    new com.criztiandev.extractionregion.gui.HologramSettingsGUI(plugin).openMenu(player, region);
+                }
+            }
+            return;
+        }
+
+        // Handle Hologram Settings
+        if (title.startsWith(com.criztiandev.extractionregion.gui.HologramSettingsGUI.TITLE)) {
+            if (data.has(new NamespacedKey(plugin, "holo-action"), PersistentDataType.STRING)) {
+                String action = data.get(new NamespacedKey(plugin, "holo-action"), PersistentDataType.STRING);
+                String regionId = data.get(new NamespacedKey(plugin, "region-id"), PersistentDataType.STRING);
+                if (regionId == null) return;
+
+                SavedRegion region = plugin.getRegionManager().getRegion(regionId);
+                if (region == null) return;
+
+                if ("back".equals(action)) {
+                    new com.criztiandev.extractionregion.gui.ExtractionSettingsGUI(plugin).openMenu(player, region);
+                } else if ("offset_x".equals(action)) {
+                    if (event.getClick().isShiftClick()) {
+                        player.closeInventory();
+                        plugin.getRegionManager().addPromptState(player.getUniqueId(), "holo_offset_x_" + regionId);
+                        player.sendMessage("§aPlease type the exact X offset for §e" + regionId + "§a:");
+                        return;
+                    }
+                    double val = region.getHologramOffsetX();
+                    if (event.getClick().isLeftClick()) val += 0.1;
+                    else if (event.getClick().isRightClick()) val -= 0.1;
+                    region.setHologramOffsetX(val);
+                    plugin.getRegionManager().saveRegion(region);
+                    new com.criztiandev.extractionregion.gui.HologramSettingsGUI(plugin).openMenu(player, region);
+                } else if ("offset_y".equals(action)) {
+                    if (event.getClick().isShiftClick()) {
+                        player.closeInventory();
+                        plugin.getRegionManager().addPromptState(player.getUniqueId(), "holo_offset_y_" + regionId);
+                        player.sendMessage("§aPlease type the exact Y offset for §e" + regionId + "§a:");
+                        return;
+                    }
+                    double val = region.getHologramOffsetY();
+                    if (event.getClick().isLeftClick()) val += 0.1;
+                    else if (event.getClick().isRightClick()) val -= 0.1;
+                    region.setHologramOffsetY(val);
+                    plugin.getRegionManager().saveRegion(region);
+                    new com.criztiandev.extractionregion.gui.HologramSettingsGUI(plugin).openMenu(player, region);
+                } else if ("offset_z".equals(action)) {
+                    if (event.getClick().isShiftClick()) {
+                        player.closeInventory();
+                        plugin.getRegionManager().addPromptState(player.getUniqueId(), "holo_offset_z_" + regionId);
+                        player.sendMessage("§aPlease type the exact Z offset for §e" + regionId + "§a:");
+                        return;
+                    }
+                    double val = region.getHologramOffsetZ();
+                    if (event.getClick().isLeftClick()) val += 0.1;
+                    else if (event.getClick().isRightClick()) val -= 0.1;
+                    region.setHologramOffsetZ(val);
+                    plugin.getRegionManager().saveRegion(region);
+                    new com.criztiandev.extractionregion.gui.HologramSettingsGUI(plugin).openMenu(player, region);
+                } else if ("scale".equals(action)) {
+                    if (event.getClick().isShiftClick()) {
+                        player.closeInventory();
+                        plugin.getRegionManager().addPromptState(player.getUniqueId(), "holo_scale_" + regionId);
+                        player.sendMessage("§aPlease type the exact scale (font size) for §e" + regionId + "§a:");
+                        return;
+                    }
+                    double val = region.getHologramScale();
+                    if (event.getClick().isLeftClick()) val += 0.1;
+                    else if (event.getClick().isRightClick()) val = Math.max(0.1, val - 0.1);
+                    region.setHologramScale(val);
+                    plugin.getRegionManager().saveRegion(region);
+                    new com.criztiandev.extractionregion.gui.HologramSettingsGUI(plugin).openMenu(player, region);
+                } else if ("cleanup".equals(action)) {
+                    plugin.getHologramManager().cleanupOldHolograms();
+                    player.sendMessage("§aForce cleaned up old/broken holograms near all conduits and globally.");
+                    player.closeInventory();
                 }
             }
             return;
@@ -433,6 +546,15 @@ public class RegionInventoryListener implements Listener {
                     else if (b == 1) region.setBlindnessSeconds(3);
                     else if (b == 3) region.setBlindnessSeconds(5);
                     else region.setBlindnessSeconds(0);
+                    plugin.getRegionManager().saveRegion(region);
+                    new com.criztiandev.extractionregion.gui.EntrySettingsGUI(plugin).openMenu(player, region);
+                } else if ("cooldown".equals(action)) {
+                    int c = region.getEntryCooldownMinutes();
+                    if (c == 0) region.setEntryCooldownMinutes(1);
+                    else if (c == 1) region.setEntryCooldownMinutes(5);
+                    else if (c == 5) region.setEntryCooldownMinutes(10);
+                    else if (c == 10) region.setEntryCooldownMinutes(30);
+                    else region.setEntryCooldownMinutes(0);
                     plugin.getRegionManager().saveRegion(region);
                     new com.criztiandev.extractionregion.gui.EntrySettingsGUI(plugin).openMenu(player, region);
                 }

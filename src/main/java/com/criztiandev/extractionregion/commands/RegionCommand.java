@@ -33,7 +33,10 @@ public class RegionCommand implements CommandExecutor {
 
         Player player = (Player) sender;
 
-        if (!player.hasPermission("extractionchest.admin")) {
+        // Check if it's the specific entry command which doesn't need admin
+        boolean isEntryCommand = command.getName().equalsIgnoreCase("regionentry") && args.length > 0 && args[0].equalsIgnoreCase("entry");
+
+        if (!isEntryCommand && !player.hasPermission("extractionchest.admin")) {
             player.sendMessage("§cYou do not have permission to use this command.");
             return true;
         }
@@ -53,6 +56,56 @@ public class RegionCommand implements CommandExecutor {
         }
 
         if (command.getName().equalsIgnoreCase("regionentry")) {
+            if (args.length > 0 && args[0].equalsIgnoreCase("entry")) {
+                if (args.length < 2) {
+                    player.sendMessage("§cUsage: /lre entry <region>");
+                    return true;
+                }
+                String regionId = args[1];
+                SavedRegion region = plugin.getRegionManager().getRegion(regionId);
+                if (region == null || region.getType() != com.criztiandev.extractionregion.models.RegionType.ENTRY_REGION) {
+                    player.sendMessage("§cValid Entry Region not found.");
+                    return true;
+                }
+
+                if (region.isOnEntryCooldown(player.getUniqueId())) {
+                    long remaining = region.getRemainingEntryCooldownTime(player.getUniqueId());
+                    player.sendMessage("§cYou are on cooldown! Please wait " + com.criztiandev.extractionregion.utils.TimeUtil.formatDuration(remaining) + " before entering again.");
+                    return true;
+                }
+
+                org.bukkit.World world = org.bukkit.Bukkit.getWorld(region.getWorld());
+                if (world == null) {
+                    player.sendMessage("§cRegion world is not loaded!");
+                    return true;
+                }
+
+                // Calculate random drop coordinates within the region boundaries
+                int minX = Math.min(region.getMinX(), region.getMaxX());
+                int maxX = Math.max(region.getMinX(), region.getMaxX());
+                int minZ = Math.min(region.getMinZ(), region.getMaxZ());
+                int maxZ = Math.max(region.getMinZ(), region.getMaxZ());
+
+                int targetX = minX == maxX ? minX : java.util.concurrent.ThreadLocalRandom.current().nextInt(minX, maxX + 1);
+                int targetZ = minZ == maxZ ? minZ : java.util.concurrent.ThreadLocalRandom.current().nextInt(minZ, maxZ + 1);
+                int targetY = 300; // Fixed high coordinate
+
+                org.bukkit.Location targetLoc = new org.bukkit.Location(world, targetX + 0.5, targetY, targetZ + 0.5, player.getLocation().getYaw(), 0);
+                
+                player.teleport(targetLoc);
+                player.sendMessage("§cWelcome to the warzone, enjoy");
+                region.setPlayerEntryCooldown(player.getUniqueId());
+
+                if (region.getSlowFallingSeconds() > 0) {
+                    player.addPotionEffect(new org.bukkit.potion.PotionEffect(org.bukkit.potion.PotionEffectType.SLOW_FALLING, region.getSlowFallingSeconds() * 20, 0, false, false, true));
+                }
+                if (region.getBlindnessSeconds() > 0) {
+                    player.addPotionEffect(new org.bukkit.potion.PotionEffect(org.bukkit.potion.PotionEffectType.BLINDNESS, region.getBlindnessSeconds() * 20, 0, false, false, true));
+                }
+                
+                return true;
+            }
+
             if (args.length > 0 && args[0].equalsIgnoreCase("create")) {
                 if (args.length > 1) {
                     player.chat("/lr create " + args[1] + " entry");

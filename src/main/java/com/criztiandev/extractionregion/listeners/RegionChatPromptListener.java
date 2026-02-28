@@ -109,6 +109,12 @@ public class RegionChatPromptListener implements Listener {
                 else if (state.startsWith("extrc_radius_")) { prefix = "extrc_radius_"; rId = state.substring(prefix.length()); }
                 else if (state.startsWith("extrc_beam_")) { prefix = "extrc_beam_"; rId = state.substring(prefix.length()); }
                 else if (state.startsWith("extrc_alarm_")) { prefix = "extrc_alarm_"; rId = state.substring(prefix.length()); }
+                else if (state.startsWith("extrc_dest_cmd_")) { prefix = "extrc_dest_cmd_"; rId = state.substring(prefix.length()); }
+                else if (state.startsWith("extrc_dest_loc_")) { prefix = "extrc_dest_loc_"; rId = state.substring(prefix.length()); }
+                else if (state.startsWith("holo_offset_x_")) { prefix = "holo_offset_x_"; rId = state.substring(prefix.length()); }
+                else if (state.startsWith("holo_offset_y_")) { prefix = "holo_offset_y_"; rId = state.substring(prefix.length()); }
+                else if (state.startsWith("holo_offset_z_")) { prefix = "holo_offset_z_"; rId = state.substring(prefix.length()); }
+                else if (state.startsWith("holo_scale_")) { prefix = "holo_scale_"; rId = state.substring(prefix.length()); }
 
                 plugin.getRegionManager().removePromptState(player.getUniqueId());
 
@@ -135,8 +141,30 @@ public class RegionChatPromptListener implements Listener {
                             region.setPossibleDurations(seq);
                             player.sendMessage("§aExtraction duration sequence updated to " + input + ".");
                         }
-                    } else if (prefix.equals("extrc_beam_") || prefix.equals("extrc_alarm_")) {
-                        if (prefix.equals("extrc_beam_")) {
+                    } else if (prefix.equals("extrc_beam_") || prefix.equals("extrc_alarm_") || prefix.equals("extrc_dest_cmd_") || prefix.equals("extrc_dest_loc_")) {
+                        if (prefix.equals("extrc_dest_cmd_")) {
+                            region.setExtractionCommand(input);
+                            player.sendMessage("§aExtraction command updated to " + input + ".");
+                        } else if (prefix.equals("extrc_dest_loc_")) {
+                            String[] coords = input.split(",");
+                            if (coords.length >= 4) {
+                                try {
+                                    region.setExtractionSpawnWorld(coords[0].trim());
+                                    region.setExtractionSpawnX(Double.parseDouble(coords[1].trim()));
+                                    region.setExtractionSpawnY(Double.parseDouble(coords[2].trim()));
+                                    region.setExtractionSpawnZ(Double.parseDouble(coords[3].trim()));
+                                    region.setExtractionSpawnYaw(0f);
+                                    region.setExtractionSpawnPitch(0f);
+                                    player.sendMessage("§aExtraction spawn location updated to " + input + ".");
+                                } catch (NumberFormatException e) {
+                                    player.sendMessage("§cInvalid coordinates format. Please use numbers for X,Y,Z.");
+                                    return;
+                                }
+                            } else {
+                                player.sendMessage("§cInvalid format. Please use 'world,x,y,z'.");
+                                return;
+                            }
+                        } else if (prefix.equals("extrc_beam_")) {
                             region.setBeamColor(input);
                             player.sendMessage("§aBeam color updated to " + input + ".");
                         } else {
@@ -148,6 +176,31 @@ public class RegionChatPromptListener implements Listener {
                                 player.sendMessage("§cInvalid sound. Please ensure you type a valid Spigot/Paper Sound enum.");
                                 return;
                             }
+                        }
+                    } else if (prefix.startsWith("holo_")) {
+                        try {
+                            double value = Double.parseDouble(input);
+                            if (prefix.equals("holo_scale_") && value <= 0) {
+                                player.sendMessage("§cScale must be greater than 0.");
+                                return;
+                            }
+                            
+                            if (prefix.equals("holo_offset_x_")) region.setHologramOffsetX(value);
+                            else if (prefix.equals("holo_offset_y_")) region.setHologramOffsetY(value);
+                            else if (prefix.equals("holo_offset_z_")) region.setHologramOffsetZ(value);
+                            else if (prefix.equals("holo_scale_")) region.setHologramScale(value);
+                            
+                            player.sendMessage("§aHologram setting updated to " + value + ".");
+                            
+                            plugin.getRegionManager().saveRegion(region);
+                            
+                            Bukkit.getScheduler().runTask(plugin, () -> {
+                                new com.criztiandev.extractionregion.gui.HologramSettingsGUI(plugin).openMenu(player, region);
+                            });
+                            return; // Early return to avoid ExtractionSettingsGUI
+                        } catch (NumberFormatException e) {
+                            player.sendMessage("§cInvalid number. Please check your input or type 'cancel'.");
+                            return;
                         }
                     } else {
                         try {

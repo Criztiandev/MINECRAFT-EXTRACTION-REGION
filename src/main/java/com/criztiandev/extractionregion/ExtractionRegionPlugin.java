@@ -81,6 +81,7 @@ public class ExtractionRegionPlugin extends JavaPlugin {
 
         // Run the hologram updater every 20 ticks (1 second)
         this.hologramManager = new com.criztiandev.extractionregion.managers.HologramManager(this);
+        this.hologramManager.cleanupOldHolograms();
         this.hologramTask = new com.criztiandev.extractionregion.tasks.HologramTask(this);
         this.hologramTask.runTaskTimer(this, 20L, 20L);
     }

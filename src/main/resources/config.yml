@@ -4,6 +4,7 @@
 # General settings
 settings:
   debug: false
+  bypass_cooldown: false # If true, players can bypass extraction cooldowns (useful for testing)
   prefix: "&8[&bExtractionChest&8]&r"
 
 # Region settings
@@ -22,6 +23,12 @@ extraction:
     start: "&8[&c!&8] &e⚠️ &aAn extraction has been initiated! &eStand by..."
     extracting_actionbar: "&a%player% is extracting us!"
     success: "&aExtraction successful!"
+    success_title:
+      title: "&a&lEXTRACTED!"
+      subtitle: "&7You have been successfully extracted."
+      fade_in: 10
+      stay: 70
+      fade_out: 20
     cancelled_look: "&cExtraction cancelled: Looked away from conduit!"
     cancelled_move: "&cExtraction cancelled: You moved!"
     cancelled_combat: "&cExtraction cancelled by combat!"
@@ -30,7 +37,7 @@ extraction:
     mimic_trap: "&8[&c!&8] &cThe extraction point at &b%region% &cwas a Mimic Trap!"
   effects:
     alarm_enabled: true
-    alarm_sound: "ENTITY_ENDER_DRAGON_GROWL" # Options: BLOCK_BELL_RESONATE, ENTITY_GHAST_WARN, ENTITY_GUARDIAN_ATTACK
+    alarm_sound: "BLOCK_BELL_RESONATE" # Options: BLOCK_BELL_RESONATE, ENTITY_GHAST_WARN, ENTITY_GUARDIAN_ATTACK
     alarm_volume: 3.0
     alarm_pitch: 2.0
     beam_color: "#FF0000" # Hex color for the extraction beam

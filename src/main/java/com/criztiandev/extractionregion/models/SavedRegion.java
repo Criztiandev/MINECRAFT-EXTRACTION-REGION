@@ -23,11 +23,20 @@ public class SavedRegion {
     private long cooldownEndTime = 0;
     private boolean mimicEnabled = true;
     private int mimicChance = 5; // Default 5%
+    private boolean bypassCooldown = false; // Bypass cooldown toggle
     private int announcementRadius = 100; // Radius in blocks for extraction announcements
     private String beamColor = "#FF0000"; // Default beam color
-    private String alarmSound = "ENTITY_ENDER_DRAGON_GROWL"; // Default alarm sound
+    private String alarmSound = "BLOCK_BELL_RESONATE"; // Default alarm sound
+
+    // HOLOGRAM SETTINGS
+    private double hologramOffsetX = 0.5;
+    private double hologramOffsetY = 3.0;
+    private double hologramOffsetZ = 0.5;
+    private double hologramScale = 1.0;
 
     // REGION SPECIFIC EXTRACTION SPAWN
+    private boolean extractionUseCommand = true;
+    private String extractionCommand = "spawn %player%";
     private String extractionSpawnWorld;
     private double extractionSpawnX, extractionSpawnY, extractionSpawnZ;
     private float extractionSpawnYaw, extractionSpawnPitch;
@@ -39,6 +48,8 @@ public class SavedRegion {
     private int dropMinX, dropMaxX, dropMinY, dropMaxY, dropMinZ, dropMaxZ;
     private int slowFallingSeconds = 10;
     private int blindnessSeconds = 3;
+    private int entryCooldownMinutes = 5;
+    private java.util.Map<java.util.UUID, Long> playerEntryCooldowns = new java.util.HashMap<>();
 
     public SavedRegion(String id, String world, int minX, int maxX, int minZ, int maxZ) {
         this.id = id;
@@ -256,6 +267,14 @@ public class SavedRegion {
         if (mimicChance > 100) mimicChance = 100;
         this.mimicChance = mimicChance;
     }
+
+    public boolean isBypassCooldown() {
+        return bypassCooldown;
+    }
+
+    public void setBypassCooldown(boolean bypassCooldown) {
+        this.bypassCooldown = bypassCooldown;
+    }
     
     // Convert to RegionSelection to reuse LocationUtils algorithms
     public RegionSelection toRegionSelection() {
@@ -302,6 +321,22 @@ public class SavedRegion {
     public void setExtractionSpawnZ(double z) { this.extractionSpawnZ = z; }
     public void setExtractionSpawnYaw(float yaw) { this.extractionSpawnYaw = yaw; }
     public void setExtractionSpawnPitch(float pitch) { this.extractionSpawnPitch = pitch; }
+
+    public boolean isExtractionUseCommand() {
+        return extractionUseCommand;
+    }
+
+    public void setExtractionUseCommand(boolean extractionUseCommand) {
+        this.extractionUseCommand = extractionUseCommand;
+    }
+
+    public String getExtractionCommand() {
+        return extractionCommand;
+    }
+
+    public void setExtractionCommand(String extractionCommand) {
+        this.extractionCommand = extractionCommand;
+    }
 
     public java.util.List<Integer> getPossibleDurations() {
         if (possibleDurations == null || possibleDurations.isEmpty()) {
@@ -399,6 +434,44 @@ public class SavedRegion {
         this.blindnessSeconds = blindnessSeconds;
     }
 
+    public int getEntryCooldownMinutes() {
+        return entryCooldownMinutes;
+    }
+
+    public void setEntryCooldownMinutes(int entryCooldownMinutes) {
+        this.entryCooldownMinutes = entryCooldownMinutes;
+    }
+
+    public java.util.Map<java.util.UUID, Long> getPlayerEntryCooldowns() {
+        if (playerEntryCooldowns == null) {
+            playerEntryCooldowns = new java.util.HashMap<>();
+        }
+        return playerEntryCooldowns;
+    }
+
+    public void setPlayerEntryCooldown(java.util.UUID playerId) {
+        if (entryCooldownMinutes <= 0) return;
+        getPlayerEntryCooldowns().put(playerId, System.currentTimeMillis() + (entryCooldownMinutes * 60000L));
+    }
+
+    public boolean isOnEntryCooldown(java.util.UUID playerId) {
+        Long expirationTime = getPlayerEntryCooldowns().get(playerId);
+        if (expirationTime == null) return false;
+        
+        if (System.currentTimeMillis() >= expirationTime) {
+            getPlayerEntryCooldowns().remove(playerId);
+            return false;
+        }
+        return true;
+    }
+
+    public long getRemainingEntryCooldownTime(java.util.UUID playerId) {
+        Long expirationTime = getPlayerEntryCooldowns().get(playerId);
+        if (expirationTime == null) return 0;
+        long remaining = expirationTime - System.currentTimeMillis();
+        return remaining > 0 ? remaining : 0;
+    }
+
     public String getBeamColor() {
         return beamColor;
     }
@@ -414,5 +487,17 @@ public class SavedRegion {
     public void setAlarmSound(String alarmSound) {
         this.alarmSound = alarmSound;
     }
+
+    public double getHologramOffsetX() { return hologramOffsetX; }
+    public void setHologramOffsetX(double hologramOffsetX) { this.hologramOffsetX = hologramOffsetX; }
+
+    public double getHologramOffsetY() { return hologramOffsetY; }
+    public void setHologramOffsetY(double hologramOffsetY) { this.hologramOffsetY = hologramOffsetY; }
+
+    public double getHologramOffsetZ() { return hologramOffsetZ; }
+    public void setHologramOffsetZ(double hologramOffsetZ) { this.hologramOffsetZ = hologramOffsetZ; }
+
+    public double getHologramScale() { return hologramScale; }
+    public void setHologramScale(double hologramScale) { this.hologramScale = hologramScale; }
 }
 
