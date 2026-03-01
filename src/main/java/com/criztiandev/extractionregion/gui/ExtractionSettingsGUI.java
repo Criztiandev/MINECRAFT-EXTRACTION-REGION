@@ -175,6 +175,8 @@ public class ExtractionSettingsGUI {
                 destMeta.setDisplayName("§5§lSpawn Destination [Command Mode]");
                 destMeta.setLore(Arrays.asList(
                     "§7Current Command: §f" + region.getExtractionCommand(),
+                    "§7(This command is always executed",
+                    "§7by the Server Console automatically)",
                     "",
                     "§eLeft-Click: §fToggle to Location Mode",
                     "§dShift-Click: §fSet command in chat"

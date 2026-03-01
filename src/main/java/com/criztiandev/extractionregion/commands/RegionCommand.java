@@ -43,6 +43,13 @@ public class RegionCommand implements CommandExecutor {
 
         if (command.getName().equalsIgnoreCase("regionchest")) {
             if (args.length > 0 && args[0].equalsIgnoreCase("create")) {
+                com.criztiandev.extractionregion.models.RegionSelection sel = plugin.getRegionManager().getSelection(player.getUniqueId());
+                if (sel == null || sel.getPos1() == null || sel.getPos2() == null || !sel.getPos1().getWorld().equals(sel.getPos2().getWorld())) {
+                    player.sendMessage("§cHey! Sorry, but you can't create a region here.");
+                    player.sendMessage("§cYou must select a region first using the wand.");
+                    return true;
+                }
+
                 if (args.length > 1) {
                     player.chat("/lr create " + args[1] + " chest");
                 } else {
@@ -107,6 +114,14 @@ public class RegionCommand implements CommandExecutor {
             }
 
             if (args.length > 0 && args[0].equalsIgnoreCase("create")) {
+                // Ensure they have a valid wand selection first
+                com.criztiandev.extractionregion.models.RegionSelection sel = plugin.getRegionManager().getSelection(player.getUniqueId());
+                if (sel == null || sel.getPos1() == null || sel.getPos2() == null || !sel.getPos1().getWorld().equals(sel.getPos2().getWorld())) {
+                    player.sendMessage("§cHey! Sorry, but you can't create a region here.");
+                    player.sendMessage("§cYou must select a region first using the wand.");
+                    return true;
+                }
+
                 if (args.length > 1) {
                     player.chat("/lr create " + args[1] + " entry");
                 } else {
@@ -140,6 +155,14 @@ public class RegionCommand implements CommandExecutor {
                 return true;
             }
             if (args.length > 0 && args[0].equalsIgnoreCase("create")) {
+                // Ensure they have a valid wand selection first
+                com.criztiandev.extractionregion.models.RegionSelection sel = plugin.getRegionManager().getSelection(player.getUniqueId());
+                if (sel == null || sel.getPos1() == null || sel.getPos2() == null || !sel.getPos1().getWorld().equals(sel.getPos2().getWorld())) {
+                    player.sendMessage("§cHey! Sorry, but you can't create a region here.");
+                    player.sendMessage("§cYou must select a region first using the wand.");
+                    return true;
+                }
+
                 if (args.length > 1) {
                     player.chat("/lr create " + args[1] + " extraction");
                 } else {

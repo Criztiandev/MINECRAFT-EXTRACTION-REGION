@@ -82,15 +82,30 @@ public class RegionActionGUI {
                 // Calculate captured chests dynamically
                 int totalChests = 0;
                 java.util.Map<String, Integer> tierCounts = new java.util.HashMap<>();
-                for (com.criztiandev.extractionchest.models.ChestInstance inst : plugin.getExtractionChestApi().getChestInstanceManager().getAllInstances()) {
-                    if (inst.getWorld().equals(region.getWorld())) {
-                        org.bukkit.Location loc = inst.getLocation(org.bukkit.Bukkit.getWorld(inst.getWorld()));
-                        if (loc.getBlockX() >= region.getMinX() && loc.getBlockX() <= region.getMaxX() &&
-                            loc.getBlockZ() >= region.getMinZ() && loc.getBlockZ() <= region.getMaxZ()) {
-                            totalChests++;
-                            tierCounts.put(inst.getParentName(), tierCounts.getOrDefault(inst.getParentName(), 0) + 1);
+                try {
+                    if (plugin.getExtractionChestApi() != null && plugin.getExtractionChestApi().getChestInstanceManager() != null) {
+                        java.util.Collection<com.criztiandev.extractionchest.models.ChestInstance> instances = plugin.getExtractionChestApi().getChestInstanceManager().getAllInstances();
+                        if (instances != null) {
+                            for (com.criztiandev.extractionchest.models.ChestInstance inst : instances) {
+                                if (inst != null && inst.getWorld() != null && inst.getWorld().equals(region.getWorld())) {
+                                    org.bukkit.World bWorld = org.bukkit.Bukkit.getWorld(inst.getWorld());
+                                    if (bWorld != null) {
+                                        org.bukkit.Location loc = inst.getLocation(bWorld);
+                                        if (loc != null) {
+                                            if (loc.getBlockX() >= region.getMinX() && loc.getBlockX() <= region.getMaxX() &&
+                                                loc.getBlockZ() >= region.getMinZ() && loc.getBlockZ() <= region.getMaxZ()) {
+                                                totalChests++;
+                                                String pName = inst.getParentName() != null ? inst.getParentName() : "Unknown";
+                                                tierCounts.put(pName, tierCounts.getOrDefault(pName, 0) + 1);
+                                            }
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
+                } catch (Exception e) {
+                    plugin.getLogger().warning("Could not calculate chest amounts for region " + region.getId() + ": " + e.getMessage());
                 }
                 
                 java.util.List<String> lore = new java.util.ArrayList<>(Arrays.asList(
@@ -298,6 +313,26 @@ public class RegionActionGUI {
                 bypassItem.setItemMeta(bypassMeta);
             }
             inv.setItem(25, bypassItem);
+        } else if (region.getType() == com.criztiandev.extractionregion.models.RegionType.CHEST_REPLENISH) {
+            ItemStack shuffleItem = new ItemStack(region.isShuffleChests() ? Material.LIME_DYE : Material.GRAY_DYE);
+            ItemMeta shuffleMeta = shuffleItem.getItemMeta();
+            if (shuffleMeta != null) {
+                shuffleMeta.setDisplayName("§e§lRandomize Locations on Refresh");
+                shuffleMeta.setLore(Arrays.asList(
+                    "§7If enabled, every time this",
+                    "§7region resets, all chests",
+                    "§7inside will randomly swap",
+                    "§7their locations and loot tables.",
+                    "",
+                    "§7Current: " + (region.isShuffleChests() ? "§aEnabled" : "§cDisabled"),
+                    "",
+                    "§eClick to toggle"
+                ));
+                shuffleMeta.getPersistentDataContainer().set(new NamespacedKey(plugin, "region-action"), PersistentDataType.STRING, "shuffle_chests");
+                shuffleMeta.getPersistentDataContainer().set(new NamespacedKey(plugin, "region-id"), PersistentDataType.STRING, region.getId());
+                shuffleItem.setItemMeta(shuffleMeta);
+            }
+            inv.setItem(24, shuffleItem);
         }
         
         ItemStack backItem = new ItemStack(Material.ARROW);

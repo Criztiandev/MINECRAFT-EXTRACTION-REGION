@@ -160,6 +160,11 @@ public class RegionChatPromptListener implements Listener {
                                     region.setExtractionSpawnYaw(0f);
                                     region.setExtractionSpawnPitch(0f);
                                     player.sendMessage("§aExtraction spawn location updated to " + input + ".");
+                                    
+                                    if (Bukkit.getWorld(coords[0].trim()) == null) {
+                                        player.sendMessage("§cWARNING: The world '" + coords[0].trim() + "' does not seem to exist! Teleport will fail.");
+                                        player.sendMessage("§e(The default overworld is usually named 'world'.)");
+                                    }
                                 } catch (NumberFormatException e) {
                                     player.sendMessage("§cInvalid coordinates format. Please use numbers for X,Y,Z.");
                                     return;

@@ -142,6 +142,25 @@ public class RegionManager {
         
         if (chestsToReplenish.isEmpty()) return 0;
 
+        if (region.isShuffleChests() && chestsToReplenish.size() > 1) {
+            java.util.List<String> identities = new java.util.ArrayList<>();
+            for (com.criztiandev.extractionchest.models.ChestInstance inst : chestsToReplenish) {
+                identities.add(inst.getParentName());
+            }
+            java.util.Collections.shuffle(identities);
+            
+            for (int i = 0; i < chestsToReplenish.size(); i++) {
+                com.criztiandev.extractionchest.models.ChestInstance inst = chestsToReplenish.get(i);
+                inst.setParentName(identities.get(i));
+                plugin.getExtractionChestApi().getStorageProvider().saveInstance(inst);
+                
+                // If the chest is already placed/visible, update hologram immediately.
+                if (inst.getState() == com.criztiandev.extractionchest.models.ChestState.READY || inst.getState() == com.criztiandev.extractionchest.models.ChestState.LOOTED) {
+                    plugin.getExtractionChestApi().getHologramManager().updateHologram(inst);
+                }
+            }
+        }
+
         new org.bukkit.scheduler.BukkitRunnable() {
             int index = 0;
             final int BATCH_SIZE = plugin.getConfig().getInt("region.replenish-batch-size", 5);

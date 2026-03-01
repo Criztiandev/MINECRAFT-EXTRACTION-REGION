@@ -234,4 +234,47 @@ public class ExtractionTaskTest {
         verify(player.spigot(), atLeastOnce()).sendMessage(eq(ChatMessageType.ACTION_BAR), any(TextComponent.class));
         verify(player).playSound(any(Location.class), eq(org.bukkit.Sound.BLOCK_GLASS_BREAK), anyFloat(), anyFloat());
     }
+    
+    @Test
+    public void testExtraction_ServerConsoleCommand() {
+        // Setup a region to use a command rather than raw teleportation
+        region.setCooldownEndTime(0);
+        region.setExtractionUseCommand(true);
+        region.setExtractionCommand("spawn %player%");
+        
+        // Ensure force OP config is effectively enabled
+        lenient().when(config.getBoolean("extraction.force_op_commands", true)).thenReturn(true);
+        
+        org.bukkit.command.ConsoleCommandSender consoleMock = mock(org.bukkit.command.ConsoleCommandSender.class);
+        mockedBukkit.when(Bukkit::getConsoleSender).thenReturn(consoleMock);
+        
+        task.handleButtonPress(player, region);
+        
+        // Simulate time passing to finish the extraction
+        ExtractionTask.ExtractionSession session = task.getSessions().get(player.getUniqueId());
+        try {
+            java.lang.reflect.Field field = ExtractionTask.ExtractionSession.class.getDeclaredField("startTime");
+            field.setAccessible(true);
+            field.setLong(session, System.currentTimeMillis() - 500000);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        
+        // Mock block in front of player
+        org.bukkit.block.Block block = mock(org.bukkit.block.Block.class);
+        lenient().when(player.getTargetBlockExact(5)).thenReturn(block);
+        lenient().when(block.getLocation()).thenReturn(region.getConduitLocation());
+        
+        // Process tick (which completes the session and executes extraction)
+        task.run();
+        
+        // Session should be removed
+        assertEquals(0, task.getSessions().size());
+        
+        // Verify the server console dispatched the command replacing %player%
+        mockedBukkit.verify(() -> Bukkit.dispatchCommand(consoleMock, "spawn Tester"));
+        
+        // Ensure player.performCommand is NOT called because the console proxies the request
+        verify(player, never()).performCommand(anyString());
+    }
 }

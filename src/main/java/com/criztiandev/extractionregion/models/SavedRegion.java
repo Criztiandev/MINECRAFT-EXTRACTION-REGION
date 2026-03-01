@@ -31,6 +31,7 @@ public class SavedRegion {
     private String alarmSound = "BLOCK_BELL_RESONATE"; // Default alarm sound
     private boolean useCooldownCommand = false;
     private String cooldownCommand = "spawn %player%";
+    private boolean shuffleChests = false;
 
     // HOLOGRAM SETTINGS
     private double hologramOffsetX = 0.5;
@@ -161,6 +162,14 @@ public class SavedRegion {
 
     public void setType(RegionType type) {
         this.type = type;
+    }
+
+    public boolean isShuffleChests() {
+        return shuffleChests;
+    }
+
+    public void setShuffleChests(boolean shuffleChests) {
+        this.shuffleChests = shuffleChests;
     }
 
     public org.bukkit.Location getConduitLocation() {

@@ -14,6 +14,7 @@ region:
 
 # Extraction Settings
 extraction:
+  force_op_commands: true # If true, region commands will run with temporary OP permissions without needing [CONSOLE] prefix.
   announcement:
     radius: 100
     start_actionbar: "&cExtraction %region% | %x%, %y%, %z%"
@@ -21,6 +22,11 @@ extraction:
     end_chat: "&eExtraction &b%region% &efinished! &7(Cap: &b%capacity%&7, Cooldown: &b%cooldown%m&7)"
   messages:
     start: "&8[&c!&8] &e⚠️ &aAn extraction has been initiated! &eStand by..."
+    start_title:
+      title: "&c&lKeep looking at the button!!"
+      fade_in: 10
+      stay: 60
+      fade_out: 10
     extracting_actionbar: "&a%player% is extracting us!"
     success: "&aExtraction successful!"
     success_title:

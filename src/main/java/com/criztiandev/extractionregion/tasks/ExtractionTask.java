@@ -178,6 +178,14 @@ public class ExtractionTask extends BukkitRunnable {
         
         sessions.put(player.getUniqueId(), new ExtractionSession(now, player.getLocation(), region));
         
+        if (plugin.getConfig().contains("extraction.messages.start_title")) {
+            String titleStr = plugin.getConfig().getString("extraction.messages.start_title.title", "&c&lKeep looking at the button").replace("&", "§");
+            int fadeIn = plugin.getConfig().getInt("extraction.messages.start_title.fade_in", 10);
+            int stay = plugin.getConfig().getInt("extraction.messages.start_title.stay", 60);
+            int fadeOut = plugin.getConfig().getInt("extraction.messages.start_title.fade_out", 10);
+            player.sendTitle(titleStr, "", fadeIn, stay, fadeOut);
+        }
+        
         // Announce to everyone in the chunk/region
         String startMsg = plugin.getConfig().getString("extraction.messages.start", "&8[&c!&8] &e⚠️ &aAn extraction has been initiated! &eStand by...");
         String actionMsg = plugin.getConfig().getString("extraction.messages.extracting_actionbar", "&a%player% is extracting us!");
@@ -231,11 +239,16 @@ public class ExtractionTask extends BukkitRunnable {
     private void executeExtraction(Player activator, SavedRegion region, boolean isBypassed) {
         // Find configured spawn fallback (only if not using commands)
         Location spawn = plugin.getConfig().getLocation("extraction.spawn");
+        boolean invalidWorldAlert = false;
+        
         if (region.getExtractionSpawnWorld() != null) {
             org.bukkit.World world = Bukkit.getWorld(region.getExtractionSpawnWorld());
             if (world != null) {
                 spawn = new Location(world, region.getExtractionSpawnX(), region.getExtractionSpawnY(), region.getExtractionSpawnZ(),
                                      region.getExtractionSpawnYaw(), region.getExtractionSpawnPitch());
+            } else {
+                invalidWorldAlert = true;
+                plugin.getLogger().warning("Extraction Region " + region.getId() + " tried to teleport players to a non-existent world: " + region.getExtractionSpawnWorld());
             }
         }
         
@@ -250,12 +263,19 @@ public class ExtractionTask extends BukkitRunnable {
                     float yaw = (float) plugin.getConfig().getDouble("extraction.spawn.yaw");
                     float pitch = (float) plugin.getConfig().getDouble("extraction.spawn.pitch");
                     spawn = new Location(world, x, y, z, yaw, pitch);
+                } else if (!invalidWorldAlert) {
+                    invalidWorldAlert = true;
+                    plugin.getLogger().warning("Extraction Region Default Spawn tried to teleport players to a non-existent world: " + w);
                 }
             }
         }
         
         if (spawn == null) {
             spawn = activator.getWorld().getSpawnLocation(); // Fallback
+        }
+        
+        if (!region.isExtractionUseCommand() && invalidWorldAlert) {
+            activator.sendMessage("§cWARNING: The target world for this extraction does not exist! Sending you to default spawn instead.");
         }
 
         // Spawn Fireworks
@@ -269,14 +289,12 @@ public class ExtractionTask extends BukkitRunnable {
                 if (region.isExtractionUseCommand()) {
                     String cmd = region.getExtractionCommand().replace("%player%", p.getName()).trim();
                     boolean runAsConsole = cmd.toUpperCase().startsWith("[CONSOLE]");
+                    
                     if (runAsConsole) cmd = cmd.substring(9).trim();
                     if (cmd.startsWith("/")) cmd = cmd.substring(1);
                     
-                    if (runAsConsole) {
-                        Bukkit.dispatchCommand(Bukkit.getConsoleSender(), cmd);
-                    } else {
-                        p.performCommand(cmd);
-                    }
+                    // Always dispatch as Console to avoid requiring OP permissions!
+                    Bukkit.dispatchCommand(Bukkit.getConsoleSender(), cmd);
                 } else {
                     p.teleport(spawn);
                 }

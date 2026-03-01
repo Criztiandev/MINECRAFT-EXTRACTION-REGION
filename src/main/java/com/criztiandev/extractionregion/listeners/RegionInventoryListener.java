@@ -249,6 +249,10 @@ public class RegionInventoryListener implements Listener {
                     region.setBypassCooldown(!region.isBypassCooldown());
                     plugin.getRegionManager().saveRegion(region);
                     new com.criztiandev.extractionregion.gui.RegionActionGUI(plugin).openMenu(player, region);
+                } else if ("shuffle_chests".equals(action)) {
+                    region.setShuffleChests(!region.isShuffleChests());
+                    plugin.getRegionManager().saveRegion(region);
+                    new com.criztiandev.extractionregion.gui.RegionActionGUI(plugin).openMenu(player, region);
                 }
             }
             return;
