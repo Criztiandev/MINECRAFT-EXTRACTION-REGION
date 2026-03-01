@@ -7,6 +7,7 @@ import com.criztiandev.extractionregion.models.SavedRegion;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -19,6 +20,7 @@ public class RegionManager {
     private final ExtractionRegionPlugin plugin;
     private final Map<UUID, RegionSelection> selections = new HashMap<>();
     private final Map<String, SavedRegion> regions = new ConcurrentHashMap<>();
+    private final Map<String, List<SavedRegion>> regionsByWorld = new ConcurrentHashMap<>();
     private final Map<UUID, RegionType> creatingPlayers = new ConcurrentHashMap<>();
     private final Map<UUID, String> timerConfiguringPlayers = new ConcurrentHashMap<>();
     private final Map<UUID, String> conduitSelectingPlayers = new ConcurrentHashMap<>();
@@ -31,11 +33,18 @@ public class RegionManager {
     public void loadAll() {
         plugin.getStorageProvider().loadAllRegions().thenAccept(list -> {
             regions.clear();
+            regionsByWorld.clear();
+            
             for (SavedRegion r : list) {
                 regions.put(r.getId().toLowerCase(), r);
+                regionsByWorld.computeIfAbsent(r.getWorld().toLowerCase(), k -> new java.util.concurrent.CopyOnWriteArrayList<>()).add(r);
             }
             plugin.getLogger().info("Loaded " + regions.size() + " saved regions.");
         });
+    }
+
+    public java.util.List<SavedRegion> getRegionsInWorld(String worldName) {
+        return regionsByWorld.getOrDefault(worldName.toLowerCase(), java.util.Collections.emptyList());
     }
 
     public Collection<SavedRegion> getRegions() {
@@ -48,10 +57,12 @@ public class RegionManager {
 
     public SavedRegion getRegionAt(org.bukkit.Location location) {
         if (location.getWorld() == null) return null;
-        for (SavedRegion region : regions.values()) {
-            if (!region.getWorld().equals(location.getWorld().getName())) continue;
-            int x = location.getBlockX();
-            int z = location.getBlockZ();
+        
+        java.util.List<SavedRegion> worldRegions = getRegionsInWorld(location.getWorld().getName());
+        int x = location.getBlockX();
+        int z = location.getBlockZ();
+        
+        for (SavedRegion region : worldRegions) {
             if (x >= region.getMinX() && x <= region.getMaxX() &&
                 z >= region.getMinZ() && z <= region.getMaxZ()) {
                 return region;
@@ -61,12 +72,34 @@ public class RegionManager {
     }
 
     public void saveRegion(SavedRegion region) {
-        regions.put(region.getId().toLowerCase(), region);
+        SavedRegion old = regions.put(region.getId().toLowerCase(), region);
+        if (old != null && !old.getWorld().equalsIgnoreCase(region.getWorld())) {
+            // World changed, remove from old world list
+            java.util.List<SavedRegion> oldList = regionsByWorld.get(old.getWorld().toLowerCase());
+            if (oldList != null) oldList.remove(old);
+        }
+        
+        java.util.List<SavedRegion> worldList = regionsByWorld.computeIfAbsent(region.getWorld().toLowerCase(), k -> new java.util.concurrent.CopyOnWriteArrayList<>());
+        if (!worldList.contains(region)) {
+             worldList.add(region);
+        }
+        
+        com.criztiandev.extractionregion.tasks.SelectionVisualizerTask vt = plugin.getVisualizerTask();
+        if (vt != null) {
+            vt.invalidateCache(region.getId());
+        }
+        
         plugin.getStorageProvider().saveRegion(region);
     }
     
     public void deleteRegion(String id) {
-        regions.remove(id.toLowerCase());
+        SavedRegion region = regions.remove(id.toLowerCase());
+        if (region != null) {
+            java.util.List<SavedRegion> worldList = regionsByWorld.get(region.getWorld().toLowerCase());
+            if (worldList != null) {
+                worldList.remove(region);
+            }
+        }
         plugin.getStorageProvider().deleteRegion(id);
     }
     
@@ -85,6 +118,7 @@ public class RegionManager {
                 regions.remove(oldId.toLowerCase());
                 region.setId(newId);
                 regions.put(newId.toLowerCase(), region);
+                // No need to update regionsByWorld as the instance reference doesn't change and ID is not the key there.
             }
             return success;
         });

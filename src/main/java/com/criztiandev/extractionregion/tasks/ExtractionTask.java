@@ -127,15 +127,14 @@ public class ExtractionTask extends BukkitRunnable {
                     org.bukkit.Color color = org.bukkit.Color.fromRGB(awtColor.getRed(), awtColor.getGreen(), awtColor.getBlue());
                     org.bukkit.Particle.DustOptions dust = new org.bukkit.Particle.DustOptions(color, 2.0f);
                     
-                    // Spawn particles upwards to simulate a solid beam to the sky limit
                     double maxOffset = world.getMaxHeight() - center.getY();
-                    for (double y = 0; y < maxOffset; y += 1.0) {
+                    for (double y = 0; y < maxOffset; y += 2.0) {
                         try {
-                            world.spawnParticle(org.bukkit.Particle.DUST, center.clone().add(0, y, 0), 2, 0.1, 0.0, 0.1, 0.0, dust);
+                            world.spawnParticle(org.bukkit.Particle.DUST, center.clone().add(0, y, 0), 5, 0.2, 1.0, 0.2, 0.0, dust);
                         } catch (Exception ignored) {}
                         
-                        if (y % 2.0 < 1.0) {
-                            world.spawnParticle(org.bukkit.Particle.WITCH, center.clone().add(0, y, 0), 1, 0.1, 0.0, 0.1, 0.0);
+                        if (y % 4.0 < 2.0) {
+                            world.spawnParticle(org.bukkit.Particle.WITCH, center.clone().add(0, y, 0), 2, 0.2, 1.0, 0.2, 0.0);
                         }
                     }
                     // Ring effect around player

@@ -25,11 +25,16 @@ public class SelectionVisualizerTask extends BukkitRunnable {
 
     private final ExtractionRegionPlugin plugin;
     private final Map<UUID, Set<Location>> activeVisuals = new HashMap<>();
+    private final Map<String, Set<Location>> cachedPerimeters = new HashMap<>();
     private final BlockData redWool;
 
     public SelectionVisualizerTask(ExtractionRegionPlugin plugin) {
         this.plugin = plugin;
         this.redWool = Bukkit.createBlockData(Material.RED_WOOL);
+    }
+
+    public void invalidateCache(String regionId) {
+        cachedPerimeters.remove(regionId.toLowerCase());
     }
 
     @Override

@@ -119,5 +119,9 @@ public class ExtractionRegionPlugin extends JavaPlugin {
     public com.criztiandev.extractionregion.tasks.ExtractionTask getExtractionTask() {
         return extractionTask;
     }
+
+    public SelectionVisualizerTask getVisualizerTask() {
+        return visualizerTask;
+    }
 }
 

@@ -29,8 +29,11 @@ public class EntryTask implements Runnable {
 
         for (Player player : Bukkit.getOnlinePlayers()) {
             Location loc = player.getLocation();
+            if (loc.getWorld() == null) continue;
             
-            for (SavedRegion region : plugin.getRegionManager().getRegions()) {
+            java.util.List<SavedRegion> worldRegions = plugin.getRegionManager().getRegionsInWorld(loc.getWorld().getName());
+            
+            for (SavedRegion region : worldRegions) {
                 if (region.getType() != RegionType.ENTRY_REGION) continue;
                 
                 // If Drop target is not set, we do nothing to prevent errors.
