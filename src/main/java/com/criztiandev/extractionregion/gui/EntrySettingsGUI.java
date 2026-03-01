@@ -41,8 +41,9 @@ public class EntrySettingsGUI {
             slowFallMeta.setLore(Arrays.asList(
                 "§7Current: §f" + region.getSlowFallingSeconds() + " Seconds",
                 "",
-                "§eClick to cycle:",
-                "§e0s -> 5s -> 10s -> 15s"
+                "§eLeft-Click: §fCycle presets",
+                "§cRight-Click: §fCycle presets",
+                "§dShift-Click: §fSet exact value in chat"
             ));
             slowFallMeta.getPersistentDataContainer().set(new NamespacedKey(plugin, "entry-action"), PersistentDataType.STRING, "slowfall");
             slowFallMeta.getPersistentDataContainer().set(new NamespacedKey(plugin, "region-id"), PersistentDataType.STRING, region.getId());
@@ -58,8 +59,9 @@ public class EntrySettingsGUI {
             blindMeta.setLore(Arrays.asList(
                 "§7Current: §f" + region.getBlindnessSeconds() + " Seconds",
                 "",
-                "§eClick to cycle:",
-                "§e0s -> 1s -> 3s -> 5s"
+                "§eLeft-Click: §fCycle presets",
+                "§cRight-Click: §fCycle presets",
+                "§dShift-Click: §fSet exact value in chat"
             ));
             blindMeta.getPersistentDataContainer().set(new NamespacedKey(plugin, "entry-action"), PersistentDataType.STRING, "blindness");
             blindMeta.getPersistentDataContainer().set(new NamespacedKey(plugin, "region-id"), PersistentDataType.STRING, region.getId());
@@ -75,14 +77,53 @@ public class EntrySettingsGUI {
             cooldownMeta.setLore(Arrays.asList(
                 "§7Current: §f" + region.getEntryCooldownMinutes() + " Minutes",
                 "",
-                "§eClick to cycle:",
-                "§e0m -> 1m -> 5m -> 10m -> 30m"
+                "§eLeft-Click: §fCycle presets",
+                "§cRight-Click: §fCycle presets",
+                "§dShift-Click: §fSet exact value in chat"
             ));
             cooldownMeta.getPersistentDataContainer().set(new NamespacedKey(plugin, "entry-action"), PersistentDataType.STRING, "cooldown");
             cooldownMeta.getPersistentDataContainer().set(new NamespacedKey(plugin, "region-id"), PersistentDataType.STRING, region.getId());
             cooldownItem.setItemMeta(cooldownMeta);
         }
         inv.setItem(13, cooldownItem);
+
+        // Slot 22: Fallback TP Command
+        ItemStack fallbackItem = new ItemStack(Material.COMMAND_BLOCK);
+        ItemMeta fallbackMeta = fallbackItem.getItemMeta();
+        if (fallbackMeta != null) {
+            fallbackMeta.setDisplayName("§c§lFallback TP Command");
+            fallbackMeta.setLore(Arrays.asList(
+                "§7Command executed if player triggers",
+                "§7the Drop Zone while on Cooldown.",
+                "",
+                "§7Current: §f" + region.getEntryFallbackCommand(),
+                "",
+                "§dShift-Click: §fType command in chat",
+                "§8(Use %player% for their name)"
+            ));
+            fallbackMeta.getPersistentDataContainer().set(new NamespacedKey(plugin, "entry-action"), PersistentDataType.STRING, "fallback_cmd");
+            fallbackMeta.getPersistentDataContainer().set(new NamespacedKey(plugin, "region-id"), PersistentDataType.STRING, region.getId());
+            fallbackItem.setItemMeta(fallbackMeta);
+        }
+        inv.setItem(22, fallbackItem);
+
+        // Slot 24: Maintenance Mode Toggle
+        ItemStack maintenanceItem = new ItemStack(region.isEntryEnabled() ? Material.LIME_DYE : Material.RED_DYE);
+        ItemMeta maintenanceMeta = maintenanceItem.getItemMeta();
+        if (maintenanceMeta != null) {
+            maintenanceMeta.setDisplayName(region.isEntryEnabled() ? "§a§lStatus: ENABLED" : "§c§lStatus: UNDER MAINTENANCE");
+            maintenanceMeta.setLore(Arrays.asList(
+                "§7If disabled, players cannot drop in.",
+                "§7They will be teleported via the",
+                "§7Fallback TP Command.",
+                "",
+                "§eClick to toggle"
+            ));
+            maintenanceMeta.getPersistentDataContainer().set(new NamespacedKey(plugin, "entry-action"), PersistentDataType.STRING, "toggle_enabled");
+            maintenanceMeta.getPersistentDataContainer().set(new NamespacedKey(plugin, "region-id"), PersistentDataType.STRING, region.getId());
+            maintenanceItem.setItemMeta(maintenanceMeta);
+        }
+        inv.setItem(24, maintenanceItem);
 
         // Back Button (Slot 18)
         ItemStack backItem = new ItemStack(Material.ARROW);

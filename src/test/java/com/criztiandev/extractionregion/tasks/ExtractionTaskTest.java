@@ -173,4 +173,65 @@ public class ExtractionTaskTest {
         task.handleButtonPress(player, region);
         verify(player).sendMessage(org.mockito.ArgumentMatchers.contains("is on cooldown"));
     }
+
+    @Test
+    public void testExtraction_CancelOnMove() {
+        region.setCooldownEndTime(0);
+        task.handleButtonPress(player, region);
+        
+        // Mock player moving far away
+        Location newLoc = new Location(world, 10, 64, 10); // Far from 5,64,5
+        lenient().when(player.getLocation()).thenReturn(newLoc);
+        
+        // Mock block in front of player
+        org.bukkit.block.Block block = mock(org.bukkit.block.Block.class);
+        lenient().when(player.getTargetBlockExact(5)).thenReturn(block);
+        lenient().when(block.getLocation()).thenReturn(region.getConduitLocation());
+
+        task.run();
+
+        // Session should be removed
+        assertEquals(0, task.getSessions().size());
+        
+        // Verify action bar was sent for cancellation
+        verify(player.spigot(), atLeastOnce()).sendMessage(eq(ChatMessageType.ACTION_BAR), any(TextComponent.class));
+        verify(player).playSound(any(Location.class), eq(org.bukkit.Sound.BLOCK_GLASS_BREAK), anyFloat(), anyFloat());
+    }
+
+    @Test
+    public void testExtraction_CancelOnLookAway() {
+        region.setCooldownEndTime(0);
+        task.handleButtonPress(player, region);
+        
+        // Mock player looking away (target block is too far from conduit)
+        org.bukkit.block.Block block = mock(org.bukkit.block.Block.class);
+        lenient().when(player.getTargetBlockExact(5)).thenReturn(block);
+        lenient().when(block.getLocation()).thenReturn(new Location(world, 20, 64, 20));
+
+        task.run();
+
+        // Session should be removed
+        assertEquals(0, task.getSessions().size());
+        
+        // Verify action bar was sent for cancellation
+        verify(player.spigot(), atLeastOnce()).sendMessage(eq(ChatMessageType.ACTION_BAR), any(TextComponent.class));
+        verify(player).playSound(any(Location.class), eq(org.bukkit.Sound.BLOCK_GLASS_BREAK), anyFloat(), anyFloat());
+    }
+
+    @Test
+    public void testExtraction_CancelOnDamage() {
+        region.setCooldownEndTime(0);
+        task.handleButtonPress(player, region);
+        
+        assertEquals(1, task.getSessions().size());
+        
+        task.cancelExtractionByDamage(player);
+        
+        // Session should be removed
+        assertEquals(0, task.getSessions().size());
+        
+        // Verify action bar was sent for cancellation
+        verify(player.spigot(), atLeastOnce()).sendMessage(eq(ChatMessageType.ACTION_BAR), any(TextComponent.class));
+        verify(player).playSound(any(Location.class), eq(org.bukkit.Sound.BLOCK_GLASS_BREAK), anyFloat(), anyFloat());
+    }
 }

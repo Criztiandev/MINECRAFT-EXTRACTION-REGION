@@ -131,6 +131,17 @@ public class YamlRegionStorageProvider implements RegionStorageProvider {
                 
                 if (sec.contains("bypassCooldown")) region.setBypassCooldown(sec.getBoolean("bypassCooldown", false));
                 
+                region.setUseCooldownCommand(sec.getBoolean("useCooldownCommand", false));
+                if (sec.contains("cooldownCommand")) {
+                    region.setCooldownCommand(sec.getString("cooldownCommand"));
+                }
+                if (sec.contains("entryFallbackCommand")) {
+                    region.setEntryFallbackCommand(sec.getString("entryFallbackCommand"));
+                }
+                if (sec.contains("entryEnabled")) {
+                    region.setEntryEnabled(sec.getBoolean("entryEnabled"));
+                }
+                
                 if (sec.contains("possibleDurations")) {
                     String seqStr = sec.getString("possibleDurations");
                     java.util.List<Integer> seq = new java.util.ArrayList<>();
@@ -239,6 +250,12 @@ public class YamlRegionStorageProvider implements RegionStorageProvider {
             
             config.set(path + ".extractionUseCommand", region.isExtractionUseCommand());
             config.set(path + ".extractionCommand", region.getExtractionCommand());
+            
+            config.set(path + ".useCooldownCommand", region.isUseCooldownCommand());
+            config.set(path + ".cooldownCommand", region.getCooldownCommand());
+            config.set(path + ".entryFallbackCommand", region.getEntryFallbackCommand());
+            config.set(path + ".entryEnabled", region.isEntryEnabled());
+            
             java.util.List<Integer> dSeq = region.getPossibleDurations();
             StringBuilder dSeqBuilder = new StringBuilder();
             for (int i = 0; i < dSeq.size(); i++) {

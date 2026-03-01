@@ -108,6 +108,7 @@ public class RegionChatPromptListener implements Listener {
                 else if (state.startsWith("extrc_mimic_")) { prefix = "extrc_mimic_"; rId = state.substring(prefix.length()); }
                 else if (state.startsWith("extrc_radius_")) { prefix = "extrc_radius_"; rId = state.substring(prefix.length()); }
                 else if (state.startsWith("extrc_beam_")) { prefix = "extrc_beam_"; rId = state.substring(prefix.length()); }
+                else if (state.startsWith("extrc_cool_cmd_")) { prefix = "extrc_cool_cmd_"; rId = state.substring(prefix.length()); }
                 else if (state.startsWith("extrc_alarm_")) { prefix = "extrc_alarm_"; rId = state.substring(prefix.length()); }
                 else if (state.startsWith("extrc_dest_cmd_")) { prefix = "extrc_dest_cmd_"; rId = state.substring(prefix.length()); }
                 else if (state.startsWith("extrc_dest_loc_")) { prefix = "extrc_dest_loc_"; rId = state.substring(prefix.length()); }
@@ -115,6 +116,9 @@ public class RegionChatPromptListener implements Listener {
                 else if (state.startsWith("holo_offset_y_")) { prefix = "holo_offset_y_"; rId = state.substring(prefix.length()); }
                 else if (state.startsWith("holo_offset_z_")) { prefix = "holo_offset_z_"; rId = state.substring(prefix.length()); }
                 else if (state.startsWith("holo_scale_")) { prefix = "holo_scale_"; rId = state.substring(prefix.length()); }
+                else if (state.startsWith("entry_slowfall_")) { prefix = "entry_slowfall_"; rId = state.substring(prefix.length()); }
+                else if (state.startsWith("entry_blindness_")) { prefix = "entry_blindness_"; rId = state.substring(prefix.length()); }
+                else if (state.startsWith("entry_cooldown_")) { prefix = "entry_cooldown_"; rId = state.substring(prefix.length()); }
 
                 plugin.getRegionManager().removePromptState(player.getUniqueId());
 
@@ -141,7 +145,7 @@ public class RegionChatPromptListener implements Listener {
                             region.setPossibleDurations(seq);
                             player.sendMessage("§aExtraction duration sequence updated to " + input + ".");
                         }
-                    } else if (prefix.equals("extrc_beam_") || prefix.equals("extrc_alarm_") || prefix.equals("extrc_dest_cmd_") || prefix.equals("extrc_dest_loc_")) {
+                    } else if (prefix.equals("extrc_beam_") || prefix.equals("extrc_alarm_") || prefix.equals("extrc_dest_cmd_") || prefix.equals("extrc_dest_loc_") || prefix.equals("extrc_cool_cmd_") || prefix.equals("entry_fallback_")) {
                         if (prefix.equals("extrc_dest_cmd_")) {
                             region.setExtractionCommand(input);
                             player.sendMessage("§aExtraction command updated to " + input + ".");
@@ -167,6 +171,13 @@ public class RegionChatPromptListener implements Listener {
                         } else if (prefix.equals("extrc_beam_")) {
                             region.setBeamColor(input);
                             player.sendMessage("§aBeam color updated to " + input + ".");
+                        } else if (prefix.equals("extrc_cool_cmd_")) {
+                            region.setCooldownCommand(input);
+                            region.setUseCooldownCommand(true);
+                            player.sendMessage("§aCooldown command updated to: " + input);
+                        } else if (prefix.equals("entry_fallback_")) {
+                            region.setEntryFallbackCommand(input);
+                            player.sendMessage("§aFallback command updated to: " + input);
                         } else {
                             try {
                                 org.bukkit.Sound.valueOf(input.toUpperCase());
@@ -217,6 +228,9 @@ public class RegionChatPromptListener implements Listener {
                                 region.setMimicChance(value);
                             }
                             else if (prefix.equals("extrc_radius_")) region.setAnnouncementRadius(value);
+                            else if (prefix.equals("entry_slowfall_")) region.setSlowFallingSeconds(value);
+                            else if (prefix.equals("entry_blindness_")) region.setBlindnessSeconds(value);
+                            else if (prefix.equals("entry_cooldown_")) region.setEntryCooldownMinutes(value);
                             
                             player.sendMessage("§aSetting updated to " + value + ".");
                         } catch (NumberFormatException e) {
@@ -227,8 +241,13 @@ public class RegionChatPromptListener implements Listener {
                     
                     plugin.getRegionManager().saveRegion(region);
                     
+                    final String finalPrefix = prefix;
                     Bukkit.getScheduler().runTask(plugin, () -> {
-                        new com.criztiandev.extractionregion.gui.ExtractionSettingsGUI(plugin).openMenu(player, region);
+                        if (finalPrefix.startsWith("entry_")) {
+                            new com.criztiandev.extractionregion.gui.EntrySettingsGUI(plugin).openMenu(player, region);
+                        } else {
+                            new com.criztiandev.extractionregion.gui.ExtractionSettingsGUI(plugin).openMenu(player, region);
+                        }
                     });
                 }
             } catch (Exception e) {

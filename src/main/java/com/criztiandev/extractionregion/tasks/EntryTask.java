@@ -40,12 +40,52 @@ public class EntryTask implements Runnable {
                 if (region.getDropWorld() == null || region.getDropWorld().isEmpty()) continue;
 
                 if (isInsideEntryBounds(loc, region)) {
-                    processEntrySequence(player, region);
+                    // Check if region is enabled
+                    if (!region.isEntryEnabled()) {
+                        sendActionBar(player, "§cThis Drop Zone is currently under maintenance!");
+                        String cmd = region.getEntryFallbackCommand().replace("%player%", player.getName());
+                        Bukkit.dispatchCommand(Bukkit.getConsoleSender(), cmd);
+                        break;
+                    }
+                    
+                    // Check if player is on cooldown
+                    long now = System.currentTimeMillis();
+                    java.util.UUID uuid = player.getUniqueId();
+                    if (region.getPlayerEntryCooldowns().containsKey(uuid)) {
+                        long expire = region.getPlayerEntryCooldowns().get(uuid);
+                        if (now < expire) {
+                            long remainingSeconds = (expire - now) / 1000;
+                            sendActionBar(player, "§cYou cannot enter the Drop Zone for another " + remainingSeconds + "s");
+                            
+                            // Dispatch fallback command
+                            String cmd = region.getEntryFallbackCommand().replace("%player%", player.getName());
+                            Bukkit.dispatchCommand(Bukkit.getConsoleSender(), cmd);
+                            
+                            break;
+                        }
+                    }
+
+                    boolean success = processEntrySequence(player, region);
+                    if (success) {
+                        // Start cooldown
+                        long cooldownMs = region.getEntryCooldownMinutes() * 60 * 1000L;
+                        if (cooldownMs > 0) {
+                            region.getPlayerEntryCooldowns().put(uuid, now + cooldownMs);
+                        }
+                        
+                        // Add to Active Drop Zone tracking for Slow Falling removal
+                        plugin.getRegionManager().addActiveDropZonePlayer(uuid);
+                    }
+                    
                     // Only process one entry region per tick to prevent chaining if overlapping
                     break;
                 }
             }
         }
+    }
+
+    private void sendActionBar(Player player, String message) {
+        player.spigot().sendMessage(net.md_5.bungee.api.ChatMessageType.ACTION_BAR, net.md_5.bungee.api.chat.TextComponent.fromLegacyText(message));
     }
 
     // Extracted for unit testing
@@ -54,19 +94,22 @@ public class EntryTask implements Runnable {
             return false;
         }
         int x = loc.getBlockX();
+        int y = loc.getBlockY();
         int z = loc.getBlockZ();
         
         return x >= Math.min(region.getMinX(), region.getMaxX()) && 
                x <= Math.max(region.getMinX(), region.getMaxX()) &&
+               y >= Math.min(region.getMinY(), region.getMaxY()) &&
+               y <= Math.max(region.getMinY(), region.getMaxY()) &&
                z >= Math.min(region.getMinZ(), region.getMaxZ()) && 
                z <= Math.max(region.getMinZ(), region.getMaxZ());
     }
 
-    public void processEntrySequence(Player player, SavedRegion region) {
+    public boolean processEntrySequence(Player player, SavedRegion region) {
         World dropWorld = Bukkit.getWorld(region.getDropWorld());
         if (dropWorld == null) {
             plugin.getLogger().warning("Entry Region " + region.getId() + " points to a null/unloaded World: " + region.getDropWorld());
-            return;
+            return false;
         }
 
         double[] coords = calculateDropCoordinates(region.getDropMinX(), region.getDropMaxX(), 
@@ -89,6 +132,7 @@ public class EntryTask implements Runnable {
 
         // Send Title so they feel immersed
         player.sendTitle("§c§lWARZONE", "§7Entering the Drop Zone...", 10, 40, 20);
+        return true;
     }
 
     // Pure math function for strict JUnit isolated testing without Bukkit environments

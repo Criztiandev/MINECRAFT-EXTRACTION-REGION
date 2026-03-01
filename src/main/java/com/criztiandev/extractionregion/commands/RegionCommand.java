@@ -238,6 +238,8 @@ public class RegionCommand implements CommandExecutor {
             String world = sel.getPos1().getWorld().getName();
 
             SavedRegion region = new SavedRegion(id, world, minX, maxX, minZ, maxZ);
+            region.setMinY(sel.getMinY());
+            region.setMaxY(sel.getMaxY());
             region.setType(type);
             plugin.getRegionManager().saveRegion(region);
 

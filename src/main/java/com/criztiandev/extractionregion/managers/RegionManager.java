@@ -25,6 +25,7 @@ public class RegionManager {
     private final Map<UUID, String> timerConfiguringPlayers = new ConcurrentHashMap<>();
     private final Map<UUID, String> conduitSelectingPlayers = new ConcurrentHashMap<>();
     private final Map<UUID, String> promptStates = new ConcurrentHashMap<>();
+    private final Set<UUID> activeDropZonePlayers = ConcurrentHashMap.newKeySet();
 
     public RegionManager(ExtractionRegionPlugin plugin) {
         this.plugin = plugin;
@@ -60,10 +61,12 @@ public class RegionManager {
         
         java.util.List<SavedRegion> worldRegions = getRegionsInWorld(location.getWorld().getName());
         int x = location.getBlockX();
+        int y = location.getBlockY();
         int z = location.getBlockZ();
         
         for (SavedRegion region : worldRegions) {
             if (x >= region.getMinX() && x <= region.getMaxX() &&
+                y >= region.getMinY() && y <= region.getMaxY() &&
                 z >= region.getMinZ() && z <= region.getMaxZ()) {
                 return region;
             }
@@ -212,6 +215,18 @@ public class RegionManager {
 
     public String getPromptState(UUID uuid) {
         return promptStates.get(uuid);
+    }
+
+    public void addActiveDropZonePlayer(UUID uuid) {
+        activeDropZonePlayers.add(uuid);
+    }
+
+    public void removeActiveDropZonePlayer(UUID uuid) {
+        activeDropZonePlayers.remove(uuid);
+    }
+
+    public boolean isActiveDropZonePlayer(UUID uuid) {
+        return activeDropZonePlayers.contains(uuid);
     }
 
     public RegionSelection getSelection(UUID uuid) {

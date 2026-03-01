@@ -275,7 +275,7 @@ public class RegionInventoryListener implements Listener {
                     
                     java.util.List<java.util.List<Integer>> presets = java.util.Arrays.asList(
                         java.util.Arrays.asList(10),
-                        java.util.Arrays.asList(5, 10, 15),
+                        java.util.Arrays.asList(5, 10, 15, 25),
                         java.util.Arrays.asList(15, 25, 30),
                         java.util.Arrays.asList(30, 45, 60)
                     );
@@ -440,6 +440,16 @@ public class RegionInventoryListener implements Listener {
                     player.closeInventory();
                     plugin.getRegionManager().addPromptState(player.getUniqueId(), "extrc_alarm_" + regionId);
                     player.sendMessage("§aPlease type the Sound enum (e.g., ENTITY_ENDER_DRAGON_GROWL) for the alarm of §e" + regionId + "§a:");
+                } else if ("cooldown_cmd".equals(action)) {
+                    if (event.getClick().isLeftClick() && !event.getClick().isShiftClick()) {
+                        region.setUseCooldownCommand(!region.isUseCooldownCommand());
+                        plugin.getRegionManager().saveRegion(region);
+                        new com.criztiandev.extractionregion.gui.ExtractionSettingsGUI(plugin).openMenu(player, region);
+                    } else if (event.getClick().isShiftClick()) {
+                        player.closeInventory();
+                        plugin.getRegionManager().addPromptState(player.getUniqueId(), "extrc_cool_cmd_" + regionId);
+                        player.sendMessage("§a[ExtractionRegion] §ePlease type the exact cooldown command (e.g. 'spawn %player%') for §b" + regionId + "§e:");
+                    }
                 } else if ("holo_menu".equals(action)) {
                     new com.criztiandev.extractionregion.gui.HologramSettingsGUI(plugin).openMenu(player, region);
                 }
@@ -533,29 +543,81 @@ public class RegionInventoryListener implements Listener {
                 if ("back".equals(action)) {
                     new RegionActionGUI(plugin).openMenu(player, region);
                 } else if ("slowfall".equals(action)) {
+                    if (event.getClick().isShiftClick()) {
+                        player.closeInventory();
+                        plugin.getRegionManager().addPromptState(player.getUniqueId(), "entry_slowfall_" + regionId);
+                        player.sendMessage("§aPlease type the exact slow falling duration (in seconds) for §e" + regionId + "§a:");
+                        return;
+                    }
                     int sf = region.getSlowFallingSeconds();
-                    if (sf == 0) region.setSlowFallingSeconds(5);
-                    else if (sf == 5) region.setSlowFallingSeconds(10);
-                    else if (sf == 10) region.setSlowFallingSeconds(15);
-                    else region.setSlowFallingSeconds(0);
+                    if (event.getClick().isLeftClick()) {
+                        if (sf == 0) region.setSlowFallingSeconds(5);
+                        else if (sf == 5) region.setSlowFallingSeconds(10);
+                        else if (sf == 10) region.setSlowFallingSeconds(15);
+                        else region.setSlowFallingSeconds(0);
+                    } else if (event.getClick().isRightClick()) {
+                        if (sf == 0) region.setSlowFallingSeconds(15);
+                        else if (sf == 5) region.setSlowFallingSeconds(0);
+                        else if (sf == 10) region.setSlowFallingSeconds(5);
+                        else region.setSlowFallingSeconds(10);
+                    }
                     plugin.getRegionManager().saveRegion(region);
                     new com.criztiandev.extractionregion.gui.EntrySettingsGUI(plugin).openMenu(player, region);
                 } else if ("blindness".equals(action)) {
+                    if (event.getClick().isShiftClick()) {
+                        player.closeInventory();
+                        plugin.getRegionManager().addPromptState(player.getUniqueId(), "entry_blindness_" + regionId);
+                        player.sendMessage("§aPlease type the exact blindness duration (in seconds) for §e" + regionId + "§a:");
+                        return;
+                    }
                     int b = region.getBlindnessSeconds();
-                    if (b == 0) region.setBlindnessSeconds(1);
-                    else if (b == 1) region.setBlindnessSeconds(3);
-                    else if (b == 3) region.setBlindnessSeconds(5);
-                    else region.setBlindnessSeconds(0);
+                    if (event.getClick().isLeftClick()) {
+                        if (b == 0) region.setBlindnessSeconds(1);
+                        else if (b == 1) region.setBlindnessSeconds(3);
+                        else if (b == 3) region.setBlindnessSeconds(5);
+                        else region.setBlindnessSeconds(0);
+                    } else if (event.getClick().isRightClick()) {
+                        if (b == 0) region.setBlindnessSeconds(5);
+                        else if (b == 1) region.setBlindnessSeconds(0);
+                        else if (b == 3) region.setBlindnessSeconds(1);
+                        else region.setBlindnessSeconds(3);
+                    }
                     plugin.getRegionManager().saveRegion(region);
                     new com.criztiandev.extractionregion.gui.EntrySettingsGUI(plugin).openMenu(player, region);
                 } else if ("cooldown".equals(action)) {
+                    if (event.getClick().isShiftClick()) {
+                        player.closeInventory();
+                        plugin.getRegionManager().addPromptState(player.getUniqueId(), "entry_cooldown_" + regionId);
+                        player.sendMessage("§aPlease type the exact entry cooldown (in minutes) for §e" + regionId + "§a:");
+                        return;
+                    }
                     int c = region.getEntryCooldownMinutes();
-                    if (c == 0) region.setEntryCooldownMinutes(1);
-                    else if (c == 1) region.setEntryCooldownMinutes(5);
-                    else if (c == 5) region.setEntryCooldownMinutes(10);
-                    else if (c == 10) region.setEntryCooldownMinutes(30);
-                    else region.setEntryCooldownMinutes(0);
+                    if (event.getClick().isLeftClick()) {
+                        if (c == 0) region.setEntryCooldownMinutes(1);
+                        else if (c == 1) region.setEntryCooldownMinutes(5);
+                        else if (c == 5) region.setEntryCooldownMinutes(10);
+                        else if (c == 10) region.setEntryCooldownMinutes(30);
+                        else region.setEntryCooldownMinutes(0);
+                    } else if (event.getClick().isRightClick()) {
+                        if (c == 0) region.setEntryCooldownMinutes(30);
+                        else if (c == 1) region.setEntryCooldownMinutes(0);
+                        else if (c == 5) region.setEntryCooldownMinutes(1);
+                        else if (c == 10) region.setEntryCooldownMinutes(5);
+                        else region.setEntryCooldownMinutes(10);
+                    }
                     plugin.getRegionManager().saveRegion(region);
+                    new com.criztiandev.extractionregion.gui.EntrySettingsGUI(plugin).openMenu(player, region);
+                } else if ("fallback_cmd".equals(action)) {
+                    if (event.getClick().isShiftClick()) {
+                        player.closeInventory();
+                        plugin.getRegionManager().addPromptState(player.getUniqueId(), "entry_fallback_" + regionId);
+                        player.sendMessage("§aPlease type the Entry Fallback command for §e" + regionId + "§a:");
+                        player.sendMessage("§7(Use %player% for the player's name. Example: spawn %player%)");
+                    }
+                } else if ("toggle_enabled".equals(action)) {
+                    region.setEntryEnabled(!region.isEntryEnabled());
+                    plugin.getRegionManager().saveRegion(region);
+                    player.playSound(player.getLocation(), org.bukkit.Sound.BLOCK_NOTE_BLOCK_PLING, 1.0f, 1.0f);
                     new com.criztiandev.extractionregion.gui.EntrySettingsGUI(plugin).openMenu(player, region);
                 }
             }

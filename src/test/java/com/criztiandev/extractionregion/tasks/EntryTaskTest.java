@@ -9,6 +9,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.Mockito.*;
+import static org.mockito.ArgumentMatchers.*;
 
 @ExtendWith(MockitoExtension.class)
 public class EntryTaskTest {
@@ -115,5 +117,44 @@ public class EntryTaskTest {
 
         latch.await();
         assertTrue(exceptions.isEmpty(), "Massive concurrency test failed with exceptions: " + exceptions);
+    }
+        
+    @Test
+    public void testProcessEntrySequence_NullWorld() {
+        org.bukkit.entity.Player player = mock(org.bukkit.entity.Player.class);
+        com.criztiandev.extractionregion.models.SavedRegion region = new com.criztiandev.extractionregion.models.SavedRegion("entry1", "world", 0, 10, 0, 10);
+        region.setDropWorld("null_world");
+        
+        java.util.logging.Logger logger = mock(java.util.logging.Logger.class);
+        lenient().when(pluginMock.getLogger()).thenReturn(logger);
+        
+        try (org.mockito.MockedStatic<org.bukkit.Bukkit> mockedBukkit = mockStatic(org.bukkit.Bukkit.class)) {
+            mockedBukkit.when(() -> org.bukkit.Bukkit.getWorld("null_world")).thenReturn(null);
+            
+            boolean result = entryTask.processEntrySequence(player, region);
+            
+            // Verify it aborted and logged warning
+            org.junit.jupiter.api.Assertions.assertFalse(result, "Should return false on null world");
+            verify(player, never()).teleport(any(org.bukkit.Location.class));
+            verify(logger).warning(org.mockito.ArgumentMatchers.contains("points to a null/unloaded World"));
+        }
+    }
+
+    @Test
+    public void testIsInsideEntryBounds_YAxis() {
+        com.criztiandev.extractionregion.models.SavedRegion region = new com.criztiandev.extractionregion.models.SavedRegion("test", "world", 10, 20, 10, 20);
+        region.setMinY(50);
+        region.setMaxY(100);
+
+        org.bukkit.World world = mock(org.bukkit.World.class);
+        when(world.getName()).thenReturn("world");
+
+        org.bukkit.Location insideLoc = new org.bukkit.Location(world, 15, 75, 15);
+        org.bukkit.Location aboveLoc = new org.bukkit.Location(world, 15, 101, 15);
+        org.bukkit.Location belowLoc = new org.bukkit.Location(world, 15, 49, 15);
+        
+        assertTrue(entryTask.isInsideEntryBounds(insideLoc, region), "Should be inside Y bounds");
+        org.junit.jupiter.api.Assertions.assertFalse(entryTask.isInsideEntryBounds(aboveLoc, region), "Should be above Y bounds");
+        org.junit.jupiter.api.Assertions.assertFalse(entryTask.isInsideEntryBounds(belowLoc, region), "Should be below Y bounds");
     }
 }

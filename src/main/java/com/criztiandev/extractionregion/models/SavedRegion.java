@@ -7,6 +7,8 @@ public class SavedRegion {
     private String id;
     private final String world;
     private final int minX, maxX, minZ, maxZ;
+    private int minY = -64;
+    private int maxY = 320;
 
     private long nextResetTime;
     private int resetIntervalMinutes;
@@ -15,7 +17,7 @@ public class SavedRegion {
     // EXTRACTION REGION FIELDS
     private RegionType type = RegionType.CHEST_REPLENISH;
     private org.bukkit.Location conduitLocation;
-    private java.util.List<Integer> cooldownSequence = new java.util.ArrayList<>(java.util.Arrays.asList(10));
+    private java.util.List<Integer> cooldownSequence = new java.util.ArrayList<>(java.util.Arrays.asList(5, 10, 15, 25));
     private int cooldownIndex = 0;
     private int maxCapacity = 5;
     private int minCapacity = 1;
@@ -27,6 +29,8 @@ public class SavedRegion {
     private int announcementRadius = 100; // Radius in blocks for extraction announcements
     private String beamColor = "#FF0000"; // Default beam color
     private String alarmSound = "BLOCK_BELL_RESONATE"; // Default alarm sound
+    private boolean useCooldownCommand = false;
+    private String cooldownCommand = "spawn %player%";
 
     // HOLOGRAM SETTINGS
     private double hologramOffsetX = 0.5;
@@ -49,6 +53,8 @@ public class SavedRegion {
     private int slowFallingSeconds = 10;
     private int blindnessSeconds = 3;
     private int entryCooldownMinutes = 5;
+    private String entryFallbackCommand = "spawn %player%";
+    private boolean entryEnabled = true;
     private java.util.Map<java.util.UUID, Long> playerEntryCooldowns = new java.util.HashMap<>();
 
     public SavedRegion(String id, String world, int minX, int maxX, int minZ, int maxZ) {
@@ -130,6 +136,22 @@ public class SavedRegion {
     public int getMaxZ() {
         return maxZ;
     }
+
+    public int getMinY() {
+        return minY;
+    }
+
+    public void setMinY(int minY) {
+        this.minY = minY;
+    }
+
+    public int getMaxY() {
+        return maxY;
+    }
+
+    public void setMaxY(int maxY) {
+        this.maxY = maxY;
+    }
     
     // NEW GETTERS & SETTERS
     
@@ -158,7 +180,7 @@ public class SavedRegion {
 
     public void setCooldownSequence(java.util.List<Integer> cooldownSequence) {
         if (cooldownSequence == null || cooldownSequence.isEmpty()) {
-            this.cooldownSequence = new java.util.ArrayList<>(java.util.Arrays.asList(10));
+            this.cooldownSequence = new java.util.ArrayList<>(java.util.Arrays.asList(5, 10, 15, 25));
         } else {
             this.cooldownSequence = cooldownSequence;
         }
@@ -499,5 +521,37 @@ public class SavedRegion {
 
     public double getHologramScale() { return hologramScale; }
     public void setHologramScale(double hologramScale) { this.hologramScale = hologramScale; }
+
+    public boolean isUseCooldownCommand() {
+        return useCooldownCommand;
+    }
+
+    public void setUseCooldownCommand(boolean useCooldownCommand) {
+        this.useCooldownCommand = useCooldownCommand;
+    }
+
+    public String getCooldownCommand() {
+        return cooldownCommand;
+    }
+
+    public void setCooldownCommand(String cooldownCommand) {
+        this.cooldownCommand = cooldownCommand;
+    }
+
+    public String getEntryFallbackCommand() {
+        return entryFallbackCommand;
+    }
+
+    public void setEntryFallbackCommand(String entryFallbackCommand) {
+        this.entryFallbackCommand = entryFallbackCommand;
+    }
+
+    public boolean isEntryEnabled() {
+        return entryEnabled;
+    }
+
+    public void setEntryEnabled(boolean entryEnabled) {
+        this.entryEnabled = entryEnabled;
+    }
 }
 

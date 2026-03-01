@@ -155,8 +155,13 @@ public class ExtractionTask extends BukkitRunnable {
         boolean bypassCooldown = region.isBypassCooldown();
         
         if (region.isOnCooldown() && !bypassCooldown) {
-            long remaining = (region.getCooldownEndTime() - now) / 1000;
-            player.sendMessage("§cExtraction point is on cooldown for " + remaining + "s");
+            if (region.isUseCooldownCommand()) {
+                String cmd = region.getCooldownCommand().replace("%player%", player.getName());
+                Bukkit.getServer().dispatchCommand(Bukkit.getConsoleSender(), cmd);
+            } else {
+                long remaining = (region.getCooldownEndTime() - now) / 1000;
+                player.sendMessage("§cExtraction point is on cooldown for " + remaining + "s");
+            }
             return;
         }
         

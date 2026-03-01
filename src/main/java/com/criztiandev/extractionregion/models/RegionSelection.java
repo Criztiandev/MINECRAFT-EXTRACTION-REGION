@@ -42,6 +42,14 @@ public class RegionSelection {
         return Math.max(pos1.getBlockZ(), pos2.getBlockZ());
     }
 
+    public int getMinY() {
+        return Math.min(pos1.getBlockY(), pos2.getBlockY());
+    }
+
+    public int getMaxY() {
+        return Math.max(pos1.getBlockY(), pos2.getBlockY());
+    }
+
     public String getWorldName() {
         return pos1.getWorld().getName();
     }

@@ -231,6 +231,29 @@ public class ExtractionSettingsGUI {
             alarmItem.setItemMeta(alarmMeta);
         }
         inv.setItem(25, alarmItem);
+        
+        // Slot 23: Cooldown Command
+        ItemStack cmdItem = new ItemStack(Material.REPEATING_COMMAND_BLOCK);
+        ItemMeta cmdMeta = cmdItem.getItemMeta();
+        if (cmdMeta != null) {
+            String status = region.isUseCooldownCommand() ? "§aEnabled" : "§cDisabled";
+            cmdMeta.setDisplayName("§5§lCooldown Command");
+            cmdMeta.setLore(Arrays.asList(
+                "§7Status: " + status,
+                "§7Current: §f" + region.getCooldownCommand(),
+                "§7Runs this command via Console when",
+                "§7a player clicks the extraction while",
+                "§7it is on cooldown.",
+                "§7Variables: %player%",
+                "",
+                "§eLeft-Click: §fToggle On/Off",
+                "§dShift-Click: §fSet exact command in chat"
+            ));
+            cmdMeta.getPersistentDataContainer().set(new NamespacedKey(plugin, "extrc-action"), PersistentDataType.STRING, "cooldown_cmd");
+            cmdMeta.getPersistentDataContainer().set(new NamespacedKey(plugin, "region-id"), PersistentDataType.STRING, region.getId());
+            cmdItem.setItemMeta(cmdMeta);
+        }
+        inv.setItem(23, cmdItem);
 
         // Slot 26: Hologram Settings
         ItemStack holoItem = new ItemStack(Material.ARMOR_STAND);

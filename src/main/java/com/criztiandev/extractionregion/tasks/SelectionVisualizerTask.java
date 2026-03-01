@@ -37,6 +37,12 @@ public class SelectionVisualizerTask extends BukkitRunnable {
         cachedPerimeters.remove(regionId.toLowerCase());
     }
 
+    // Expose active visuals to prevent Z-fighting with other block visualizer tasks
+    public boolean isVisualBlockActive(Player player, Location loc) {
+        Set<Location> visuals = activeVisuals.get(player.getUniqueId());
+        return visuals != null && visuals.contains(loc);
+    }
+
     @Override
     public void run() {
         for (Player player : Bukkit.getOnlinePlayers()) {
@@ -140,7 +146,13 @@ public class SelectionVisualizerTask extends BukkitRunnable {
 
                 for (Location loc : currentVisuals) {
                     if (!newVisuals.contains(loc) && loc.getWorld().equals(player.getWorld())) {
-                        player.sendBlockChange(loc, loc.getBlock().getBlockData());
+                        boolean isExtractionBlock = false;
+                        if (plugin.getParticleVisualizerTask() != null) {
+                            isExtractionBlock = plugin.getParticleVisualizerTask().isFakeBlockActive(player, loc);
+                        }
+                        if (!isExtractionBlock) {
+                            player.sendBlockChange(loc, loc.getBlock().getBlockData());
+                        }
                     }
                 }
                 
@@ -161,7 +173,13 @@ public class SelectionVisualizerTask extends BukkitRunnable {
                 if (!currentVisuals.isEmpty()) {
                     for (Location loc : currentVisuals) {
                         if (loc.getWorld().equals(player.getWorld())) {
-                            player.sendBlockChange(loc, loc.getBlock().getBlockData());
+                            boolean isExtractionBlock = false;
+                            if (plugin.getParticleVisualizerTask() != null) {
+                                isExtractionBlock = plugin.getParticleVisualizerTask().isFakeBlockActive(player, loc);
+                            }
+                            if (!isExtractionBlock) {
+                                player.sendBlockChange(loc, loc.getBlock().getBlockData());
+                            }
                         }
                     }
                     currentVisuals.clear();

@@ -22,6 +22,7 @@ public class ExtractionRegionPlugin extends JavaPlugin {
     private com.criztiandev.extractionregion.tasks.EntryTask entryTask;
     private com.criztiandev.extractionregion.managers.HologramManager hologramManager;
     private com.criztiandev.extractionregion.tasks.HologramTask hologramTask;
+    private com.criztiandev.extractionregion.tasks.ExtractionParticleVisualizerTask particleVisualizerTask;
 
     @Override
     public void onEnable() {
@@ -84,6 +85,10 @@ public class ExtractionRegionPlugin extends JavaPlugin {
         this.hologramManager.cleanupOldHolograms();
         this.hologramTask = new com.criztiandev.extractionregion.tasks.HologramTask(this);
         this.hologramTask.runTaskTimer(this, 20L, 20L);
+
+        // Run the extraction particle visualizer every 20 ticks (1 second)
+        this.particleVisualizerTask = new com.criztiandev.extractionregion.tasks.ExtractionParticleVisualizerTask(this);
+        this.particleVisualizerTask.runTaskTimer(this, 20L, 20L);
     }
 
     @Override
@@ -96,6 +101,9 @@ public class ExtractionRegionPlugin extends JavaPlugin {
         }
         if (this.storageProvider != null) {
             this.storageProvider.shutdown();
+        }
+        if (this.particleVisualizerTask != null) {
+            try { this.particleVisualizerTask.cancel(); } catch (Exception ignored) {}
         }
         getLogger().info("ExtractionRegionEditor has been disabled!");
     }
@@ -122,6 +130,10 @@ public class ExtractionRegionPlugin extends JavaPlugin {
 
     public SelectionVisualizerTask getVisualizerTask() {
         return visualizerTask;
+    }
+
+    public com.criztiandev.extractionregion.tasks.ExtractionParticleVisualizerTask getParticleVisualizerTask() {
+        return particleVisualizerTask;
     }
 }
 

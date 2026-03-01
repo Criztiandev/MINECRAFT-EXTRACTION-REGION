@@ -70,6 +70,55 @@ public class ExtractionMechanicsListener implements Listener {
         }
     }
 
+    private boolean isInsideExtractionRegion(Location loc) {
+        for (SavedRegion region : plugin.getRegionManager().getRegions()) {
+            if (region.getType() == RegionType.EXTRACTION && region.getWorld().equals(loc.getWorld().getName())) {
+                if (loc.getBlockX() >= region.getMinX() && loc.getBlockX() <= region.getMaxX() &&
+                    loc.getBlockZ() >= region.getMinZ() && loc.getBlockZ() <= region.getMaxZ()) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    @EventHandler
+    public void onBlockPhysics(org.bukkit.event.block.BlockPhysicsEvent event) {
+        if (isInsideExtractionRegion(event.getBlock().getLocation())) {
+            event.setCancelled(true);
+        }
+    }
+
+    @EventHandler
+    public void onEntityExplode(org.bukkit.event.entity.EntityExplodeEvent event) {
+        event.blockList().removeIf(block -> isInsideExtractionRegion(block.getLocation()));
+    }
+
+    @EventHandler
+    public void onBlockExplode(org.bukkit.event.block.BlockExplodeEvent event) {
+        event.blockList().removeIf(block -> isInsideExtractionRegion(block.getLocation()));
+    }
+
+    @EventHandler
+    public void onPistonExtend(org.bukkit.event.block.BlockPistonExtendEvent event) {
+        for (Block block : event.getBlocks()) {
+            if (isInsideExtractionRegion(block.getLocation()) || isInsideExtractionRegion(block.getLocation().add(event.getDirection().getDirection()))) {
+                event.setCancelled(true);
+                return;
+            }
+        }
+    }
+
+    @EventHandler
+    public void onPistonRetract(org.bukkit.event.block.BlockPistonRetractEvent event) {
+        for (Block block : event.getBlocks()) {
+            if (isInsideExtractionRegion(block.getLocation())) {
+                event.setCancelled(true);
+                return;
+            }
+        }
+    }
+
     // 2. Combat Tag Cancellation: Taking damage from an entity cancels extraction
     @EventHandler
     public void onPlayerDamage(EntityDamageByEntityEvent event) {
@@ -78,6 +127,20 @@ public class ExtractionMechanicsListener implements Listener {
             // Tell the task to cancel the extraction session if it exists
             if (plugin.getExtractionTask() != null) {
                 plugin.getExtractionTask().cancelExtractionByDamage(victim);
+            }
+        }
+    }
+
+    // 2.5 Drop Zone Landing logic: Strip Slow Falling when they touch the ground
+    @EventHandler
+    public void onPlayerMove(org.bukkit.event.player.PlayerMoveEvent event) {
+        Player player = event.getPlayer();
+        if (plugin.getRegionManager().isActiveDropZonePlayer(player.getUniqueId())) {
+            // Check if player has landed
+            org.bukkit.Location to = event.getTo();
+            if (to != null && ((org.bukkit.entity.Entity) player).isOnGround()) {
+                player.removePotionEffect(org.bukkit.potion.PotionEffectType.SLOW_FALLING);
+                plugin.getRegionManager().removeActiveDropZonePlayer(player.getUniqueId());
             }
         }
     }

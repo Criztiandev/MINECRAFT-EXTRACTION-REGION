@@ -53,6 +53,8 @@ public class SQLiteRegionStorageProvider implements RegionStorageProvider {
                     "world TEXT NOT NULL," +
                     "min_x INTEGER NOT NULL," +
                     "max_x INTEGER NOT NULL," +
+                    "min_y INTEGER NOT NULL DEFAULT -64," +
+                    "max_y INTEGER NOT NULL DEFAULT 320," +
                     "min_z INTEGER NOT NULL," +
                     "max_z INTEGER NOT NULL," +
                     "next_reset_time INTEGER NOT NULL DEFAULT 0," +
@@ -109,6 +111,8 @@ public class SQLiteRegionStorageProvider implements RegionStorageProvider {
             
             // Extraction regions migration
             String[] newColumns = {
+                "min_y INTEGER NOT NULL DEFAULT -64",
+                "max_y INTEGER NOT NULL DEFAULT 320",
                 "type TEXT NOT NULL DEFAULT 'CHEST_REPLENISH'",
                 "conduit_world TEXT",
                 "conduit_x INTEGER",
@@ -145,7 +149,11 @@ public class SQLiteRegionStorageProvider implements RegionStorageProvider {
                 "hologram_scale REAL NOT NULL DEFAULT 1.0",
                 "bypass_cooldown INTEGER NOT NULL DEFAULT 0",
                 "extraction_use_command INTEGER NOT NULL DEFAULT 0",
-                "extraction_command TEXT NOT NULL DEFAULT 'spawn %player%'"
+                "extraction_command TEXT NOT NULL DEFAULT 'spawn %player%'",
+                "use_cooldown_command INTEGER NOT NULL DEFAULT 0",
+                "cooldown_command TEXT NOT NULL DEFAULT 'spawn %player%'",
+                "entry_fallback_command TEXT NOT NULL DEFAULT 'spawn %player%'",
+                "entry_enabled INTEGER NOT NULL DEFAULT 1"
             };
             
             for (String colDef : newColumns) {
@@ -186,12 +194,16 @@ public class SQLiteRegionStorageProvider implements RegionStorageProvider {
                         String world = rs.getString("world");
                         int minX = rs.getInt("min_x");
                         int maxX = rs.getInt("max_x");
+                        int minY = rs.getInt("min_y");
+                        int maxY = rs.getInt("max_y");
                         int minZ = rs.getInt("min_z");
                         int maxZ = rs.getInt("max_z");
                         long nextResetTime = rs.getLong("next_reset_time");
                         int resetIntervalMinutes = rs.getInt("reset_interval_minutes");
 
                         SavedRegion region = new SavedRegion(id, world, minX, maxX, minZ, maxZ);
+                        region.setMinY(minY);
+                        region.setMaxY(maxY);
                         region.setNextResetTime(nextResetTime);
                         region.setResetIntervalMinutes(resetIntervalMinutes);
                         
@@ -205,7 +217,7 @@ public class SQLiteRegionStorageProvider implements RegionStorageProvider {
                                     int oldVal = rs.getInt("cooldown_minutes");
                                     region.setCooldownSequence(new java.util.ArrayList<>(java.util.Arrays.asList(oldVal)));
                                 } catch (Exception ignored) {
-                                    region.setCooldownSequence(new java.util.ArrayList<>(java.util.Arrays.asList(10)));
+                                    region.setCooldownSequence(new java.util.ArrayList<>(java.util.Arrays.asList(5, 10, 15, 25)));
                                 }
                             } else {
                                 java.util.List<Integer> seq = new java.util.ArrayList<>();
@@ -239,6 +251,17 @@ public class SQLiteRegionStorageProvider implements RegionStorageProvider {
                                 region.setHologramOffsetZ(rs.getDouble("hologram_offset_z"));
                                 region.setHologramScale(rs.getDouble("hologram_scale"));
                             } catch (Exception ignored) {}
+                            
+                            try { region.setUseCooldownCommand(rs.getInt("use_cooldown_command") == 1); } catch (Exception ignored) {}
+                            try {
+                                String cmd = rs.getString("cooldown_command");
+                                if (cmd != null) region.setCooldownCommand(cmd);
+                            } catch (Exception ignored) {}
+                            try {
+                                String efCmd = rs.getString("entry_fallback_command");
+                                if (efCmd != null) region.setEntryFallbackCommand(efCmd);
+                            } catch (Exception ignored) {}
+                            try { region.setEntryEnabled(rs.getInt("entry_enabled") == 1); } catch (Exception ignored) {}
                             
                             String conduitWorld = rs.getString("conduit_world");
                             if (conduitWorld != null) {
@@ -315,10 +338,11 @@ public class SQLiteRegionStorageProvider implements RegionStorageProvider {
 
                 try {
                     try (PreparedStatement stmt = conn.prepareStatement(
-                            "INSERT INTO regions (id, type, world, min_x, max_x, min_z, max_z, next_reset_time, reset_interval_minutes, conduit_world, conduit_x, conduit_y, conduit_z, cooldown_sequence, cooldown_index, max_capacity, min_capacity, cooldown_end_time, mimic_enabled, mimic_chance, announcement_radius, drop_world, drop_min_x, drop_max_x, drop_min_y, drop_max_y, drop_min_z, drop_max_z, slow_falling_seconds, blindness_seconds, ext_spawn_world, ext_spawn_x, ext_spawn_y, ext_spawn_z, ext_spawn_yaw, ext_spawn_pitch, possible_durations, beam_color, alarm_sound, hologram_offset_x, hologram_offset_y, hologram_offset_z, hologram_scale, bypass_cooldown, extraction_use_command, extraction_command) " +
-                            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) " +
+                            "INSERT INTO regions (id, type, world, min_x, max_x, min_y, max_y, min_z, max_z, next_reset_time, reset_interval_minutes, conduit_world, conduit_x, conduit_y, conduit_z, cooldown_sequence, cooldown_index, max_capacity, min_capacity, cooldown_end_time, mimic_enabled, mimic_chance, announcement_radius, drop_world, drop_min_x, drop_max_x, drop_min_y, drop_max_y, drop_min_z, drop_max_z, slow_falling_seconds, blindness_seconds, ext_spawn_world, ext_spawn_x, ext_spawn_y, ext_spawn_z, ext_spawn_yaw, ext_spawn_pitch, possible_durations, beam_color, alarm_sound, hologram_offset_x, hologram_offset_y, hologram_offset_z, hologram_scale, bypass_cooldown, extraction_use_command, extraction_command, use_cooldown_command, cooldown_command, entry_fallback_command, entry_enabled) " +
+                            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) " +
                             "ON CONFLICT(id) DO UPDATE SET " +
                             "type=excluded.type, world=excluded.world, min_x=excluded.min_x, max_x=excluded.max_x, " +
+                            "min_y=excluded.min_y, max_y=excluded.max_y, " +
                             "min_z=excluded.min_z, max_z=excluded.max_z, " +
                             "next_reset_time=excluded.next_reset_time, reset_interval_minutes=excluded.reset_interval_minutes, " +
                             "conduit_world=excluded.conduit_world, conduit_x=excluded.conduit_x, conduit_y=excluded.conduit_y, conduit_z=excluded.conduit_z, " +
@@ -332,28 +356,32 @@ public class SQLiteRegionStorageProvider implements RegionStorageProvider {
                             "ext_spawn_z=excluded.ext_spawn_z, ext_spawn_yaw=excluded.ext_spawn_yaw, ext_spawn_pitch=excluded.ext_spawn_pitch, " +
                             "possible_durations=excluded.possible_durations, beam_color=excluded.beam_color, alarm_sound=excluded.alarm_sound, " +
                             "hologram_offset_x=excluded.hologram_offset_x, hologram_offset_y=excluded.hologram_offset_y, hologram_offset_z=excluded.hologram_offset_z, hologram_scale=excluded.hologram_scale, bypass_cooldown=excluded.bypass_cooldown, " +
-                            "extraction_use_command=excluded.extraction_use_command, extraction_command=excluded.extraction_command")) {
+                            "extraction_use_command=excluded.extraction_use_command, extraction_command=excluded.extraction_command, " +
+                            "use_cooldown_command=excluded.use_cooldown_command, cooldown_command=excluded.cooldown_command, " +
+                            "entry_fallback_command=excluded.entry_fallback_command, entry_enabled=excluded.entry_enabled")) {
                         
                         stmt.setString(1, region.getId());
                         stmt.setString(2, region.getType().name());
                         stmt.setString(3, region.getWorld());
                         stmt.setInt(4, region.getMinX());
                         stmt.setInt(5, region.getMaxX());
-                        stmt.setInt(6, region.getMinZ());
-                        stmt.setInt(7, region.getMaxZ());
-                        stmt.setLong(8, region.getNextResetTime());
-                        stmt.setInt(9, region.getResetIntervalMinutes());
+                        stmt.setInt(6, region.getMinY());
+                        stmt.setInt(7, region.getMaxY());
+                        stmt.setInt(8, region.getMinZ());
+                        stmt.setInt(9, region.getMaxZ());
+                        stmt.setLong(10, region.getNextResetTime());
+                        stmt.setInt(11, region.getResetIntervalMinutes());
                         
                         if (region.getConduitLocation() != null && region.getConduitLocation().getWorld() != null) {
-                            stmt.setString(10, region.getConduitLocation().getWorld().getName());
-                            stmt.setInt(11, region.getConduitLocation().getBlockX());
-                            stmt.setInt(12, region.getConduitLocation().getBlockY());
-                            stmt.setInt(13, region.getConduitLocation().getBlockZ());
+                            stmt.setString(12, region.getConduitLocation().getWorld().getName());
+                            stmt.setInt(13, region.getConduitLocation().getBlockX());
+                            stmt.setInt(14, region.getConduitLocation().getBlockY());
+                            stmt.setInt(15, region.getConduitLocation().getBlockZ());
                         } else {
-                            stmt.setNull(10, java.sql.Types.VARCHAR);
-                            stmt.setNull(11, java.sql.Types.INTEGER);
-                            stmt.setNull(12, java.sql.Types.INTEGER);
+                            stmt.setNull(12, java.sql.Types.VARCHAR);
                             stmt.setNull(13, java.sql.Types.INTEGER);
+                            stmt.setNull(14, java.sql.Types.INTEGER);
+                            stmt.setNull(15, java.sql.Types.INTEGER);
                         }
                         
                         java.util.List<Integer> seq = region.getCooldownSequence();
@@ -362,39 +390,39 @@ public class SQLiteRegionStorageProvider implements RegionStorageProvider {
                             seqBuilder.append(seq.get(i));
                             if (i < seq.size() - 1) seqBuilder.append(",");
                         }
-                        stmt.setString(14, seqBuilder.toString());
-                        stmt.setInt(15, region.getCooldownIndex());
-                        stmt.setInt(16, region.getMaxCapacity());
-                        stmt.setInt(17, region.getMinCapacity());
-                        stmt.setLong(18, region.getCooldownEndTime());
-                        stmt.setInt(19, region.isMimicEnabled() ? 1 : 0);
-                        stmt.setInt(20, region.getMimicChance());
-                        stmt.setInt(21, region.getAnnouncementRadius());
+                        stmt.setString(16, seqBuilder.toString());
+                        stmt.setInt(17, region.getCooldownIndex());
+                        stmt.setInt(18, region.getMaxCapacity());
+                        stmt.setInt(19, region.getMinCapacity());
+                        stmt.setLong(20, region.getCooldownEndTime());
+                        stmt.setInt(21, region.isMimicEnabled() ? 1 : 0);
+                        stmt.setInt(22, region.getMimicChance());
+                        stmt.setInt(23, region.getAnnouncementRadius());
                         
-                        stmt.setString(22, region.getDropWorld());
-                        stmt.setInt(23, region.getDropMinX());
-                        stmt.setInt(24, region.getDropMaxX());
-                        stmt.setInt(25, region.getDropMinY());
-                        stmt.setInt(26, region.getDropMaxY());
-                        stmt.setInt(27, region.getDropMinZ());
-                        stmt.setInt(28, region.getDropMaxZ());
-                        stmt.setInt(29, region.getSlowFallingSeconds());
-                        stmt.setInt(30, region.getBlindnessSeconds());
+                        stmt.setString(24, region.getDropWorld());
+                        stmt.setInt(25, region.getDropMinX());
+                        stmt.setInt(26, region.getDropMaxX());
+                        stmt.setInt(27, region.getDropMinY());
+                        stmt.setInt(28, region.getDropMaxY());
+                        stmt.setInt(29, region.getDropMinZ());
+                        stmt.setInt(30, region.getDropMaxZ());
+                        stmt.setInt(31, region.getSlowFallingSeconds());
+                        stmt.setInt(32, region.getBlindnessSeconds());
                         
                         if (region.getExtractionSpawnWorld() != null) {
-                            stmt.setString(31, region.getExtractionSpawnWorld());
-                            stmt.setDouble(32, region.getExtractionSpawnX());
-                            stmt.setDouble(33, region.getExtractionSpawnY());
-                            stmt.setDouble(34, region.getExtractionSpawnZ());
-                            stmt.setDouble(35, region.getExtractionSpawnYaw());
-                            stmt.setDouble(36, region.getExtractionSpawnPitch());
+                            stmt.setString(33, region.getExtractionSpawnWorld());
+                            stmt.setDouble(34, region.getExtractionSpawnX());
+                            stmt.setDouble(35, region.getExtractionSpawnY());
+                            stmt.setDouble(36, region.getExtractionSpawnZ());
+                            stmt.setDouble(37, region.getExtractionSpawnYaw());
+                            stmt.setDouble(38, region.getExtractionSpawnPitch());
                         } else {
-                            stmt.setNull(31, java.sql.Types.VARCHAR);
-                            stmt.setNull(32, java.sql.Types.REAL);
-                            stmt.setNull(33, java.sql.Types.REAL);
+                            stmt.setNull(33, java.sql.Types.VARCHAR);
                             stmt.setNull(34, java.sql.Types.REAL);
                             stmt.setNull(35, java.sql.Types.REAL);
                             stmt.setNull(36, java.sql.Types.REAL);
+                            stmt.setNull(37, java.sql.Types.REAL);
+                            stmt.setNull(38, java.sql.Types.REAL);
                         }
                         
                         java.util.List<Integer> dSeq = region.getPossibleDurations();
@@ -403,16 +431,20 @@ public class SQLiteRegionStorageProvider implements RegionStorageProvider {
                             dSeqBuilder.append(dSeq.get(i));
                             if (i < dSeq.size() - 1) dSeqBuilder.append(",");
                         }
-                        stmt.setString(37, dSeqBuilder.toString());
-                        stmt.setString(38, region.getBeamColor());
-                        stmt.setString(39, region.getAlarmSound());
-                        stmt.setDouble(40, region.getHologramOffsetX());
-                        stmt.setDouble(41, region.getHologramOffsetY());
-                        stmt.setDouble(42, region.getHologramOffsetZ());
-                        stmt.setDouble(43, region.getHologramScale());
-                        stmt.setInt(44, region.isBypassCooldown() ? 1 : 0);
-                        stmt.setInt(45, region.isExtractionUseCommand() ? 1 : 0);
-                        stmt.setString(46, region.getExtractionCommand());
+                        stmt.setString(39, dSeqBuilder.toString());
+                        stmt.setString(40, region.getBeamColor());
+                        stmt.setString(41, region.getAlarmSound());
+                        stmt.setDouble(42, region.getHologramOffsetX());
+                        stmt.setDouble(43, region.getHologramOffsetY());
+                        stmt.setDouble(44, region.getHologramOffsetZ());
+                        stmt.setDouble(45, region.getHologramScale());
+                        stmt.setInt(46, region.isBypassCooldown() ? 1 : 0);
+                        stmt.setInt(47, region.isExtractionUseCommand() ? 1 : 0);
+                        stmt.setString(48, region.getExtractionCommand());
+                        stmt.setInt(49, region.isUseCooldownCommand() ? 1 : 0);
+                        stmt.setString(50, region.getCooldownCommand());
+                        stmt.setString(51, region.getEntryFallbackCommand());
+                        stmt.setInt(52, region.isEntryEnabled() ? 1 : 0);
                         
                         stmt.executeUpdate();
                     }
