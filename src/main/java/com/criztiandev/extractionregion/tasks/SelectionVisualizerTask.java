@@ -83,25 +83,42 @@ public class SelectionVisualizerTask extends BukkitRunnable {
                 if (targetRegion != null) {
                     world = Bukkit.getWorld(targetRegion.getWorld());
                     if (world != null) {
-                        int minX = targetRegion.getMinX();
-                        int maxX = targetRegion.getMaxX();
-                        int minZ = targetRegion.getMinZ();
-                        int maxZ = targetRegion.getMaxZ();
+                        String regionId = targetRegion.getId().toLowerCase();
                         
-                        if (maxX - minX < 200 && maxZ - minZ < 200) {
-                            for (int x = minX; x <= maxX; x++) {
-                                int y1 = world.getHighestBlockYAt(x, minZ);
-                                newVisuals.add(new Location(world, x, y1, minZ));
+                        Set<Location> cached = cachedPerimeters.get(regionId);
+                        if (cached != null) {
+                            newVisuals.addAll(cached);
+                        } else {
+                            int minX = targetRegion.getMinX();
+                            int maxX = targetRegion.getMaxX();
+                            int minZ = targetRegion.getMinZ();
+                            int maxZ = targetRegion.getMaxZ();
+                            
+                            if (maxX - minX < 200 && maxZ - minZ < 200) {
+                                // Only build cache if corners are loaded to prevent main-thread disk I/O lag
+                                boolean canCache = true;
+                                if (!world.isChunkLoaded(minX >> 4, minZ >> 4)) canCache = false;
+                                if (!world.isChunkLoaded(maxX >> 4, maxZ >> 4)) canCache = false;
                                 
-                                int y2 = world.getHighestBlockYAt(x, maxZ);
-                                newVisuals.add(new Location(world, x, y2, maxZ));
-                            }
-                            for (int z = minZ + 1; z < maxZ; z++) {
-                                int y1 = world.getHighestBlockYAt(minX, z);
-                                newVisuals.add(new Location(world, minX, y1, z));
-                                
-                                int y2 = world.getHighestBlockYAt(maxX, z);
-                                newVisuals.add(new Location(world, maxX, y2, z));
+                                if (canCache) {
+                                    Set<Location> perimeter = new HashSet<>();
+                                    for (int x = minX; x <= maxX; x++) {
+                                        int y1 = world.getHighestBlockYAt(x, minZ);
+                                        perimeter.add(new Location(world, x, y1, minZ));
+                                        
+                                        int y2 = world.getHighestBlockYAt(x, maxZ);
+                                        perimeter.add(new Location(world, x, y2, maxZ));
+                                    }
+                                    for (int z = minZ + 1; z < maxZ; z++) {
+                                        int y1 = world.getHighestBlockYAt(minX, z);
+                                        perimeter.add(new Location(world, minX, y1, z));
+                                        
+                                        int y2 = world.getHighestBlockYAt(maxX, z);
+                                        perimeter.add(new Location(world, maxX, y2, z));
+                                    }
+                                    cachedPerimeters.put(regionId, perimeter);
+                                    newVisuals.addAll(perimeter);
+                                }
                             }
                         }
                     }
@@ -109,14 +126,18 @@ public class SelectionVisualizerTask extends BukkitRunnable {
                     world = selection.getPos1().getWorld();
                     int x = selection.getPos1().getBlockX();
                     int z = selection.getPos1().getBlockZ();
-                    int y = world.getHighestBlockYAt(x, z);
-                    newVisuals.add(new Location(world, x, y, z));
+                    if (world.isChunkLoaded(x >> 4, z >> 4)) {
+                        int y = world.getHighestBlockYAt(x, z);
+                        newVisuals.add(new Location(world, x, y, z));
+                    }
                 } else if (selection.getPos1() == null && selection.getPos2() != null) {
                     world = selection.getPos2().getWorld();
                     int x = selection.getPos2().getBlockX();
                     int z = selection.getPos2().getBlockZ();
-                    int y = world.getHighestBlockYAt(x, z);
-                    newVisuals.add(new Location(world, x, y, z));
+                    if (world.isChunkLoaded(x >> 4, z >> 4)) {
+                        int y = world.getHighestBlockYAt(x, z);
+                        newVisuals.add(new Location(world, x, y, z));
+                    }
                 } else if (selection.getPos1() != null && selection.getPos2() != null) {
                     if (selection.getPos1().getWorld().equals(selection.getPos2().getWorld())) {
                         world = selection.getPos1().getWorld();
@@ -126,19 +147,21 @@ public class SelectionVisualizerTask extends BukkitRunnable {
                         int maxZ = selection.getMaxZ();
                         
                         if (maxX - minX < 200 && maxZ - minZ < 200) {
-                            for (int x = minX; x <= maxX; x++) {
-                                int y1 = world.getHighestBlockYAt(x, minZ);
-                                newVisuals.add(new Location(world, x, y1, minZ));
-                                
-                                int y2 = world.getHighestBlockYAt(x, maxZ);
-                                newVisuals.add(new Location(world, x, y2, maxZ));
-                            }
-                            for (int z = minZ + 1; z < maxZ; z++) {
-                                int y1 = world.getHighestBlockYAt(minX, z);
-                                newVisuals.add(new Location(world, minX, y1, z));
-                                
-                                int y2 = world.getHighestBlockYAt(maxX, z);
-                                newVisuals.add(new Location(world, maxX, y2, z));
+                            if (world.isChunkLoaded(minX >> 4, minZ >> 4) && world.isChunkLoaded(maxX >> 4, maxZ >> 4)) {
+                                for (int x = minX; x <= maxX; x++) {
+                                    int y1 = world.getHighestBlockYAt(x, minZ);
+                                    newVisuals.add(new Location(world, x, y1, minZ));
+                                    
+                                    int y2 = world.getHighestBlockYAt(x, maxZ);
+                                    newVisuals.add(new Location(world, x, y2, maxZ));
+                                }
+                                for (int z = minZ + 1; z < maxZ; z++) {
+                                    int y1 = world.getHighestBlockYAt(minX, z);
+                                    newVisuals.add(new Location(world, minX, y1, z));
+                                    
+                                    int y2 = world.getHighestBlockYAt(maxX, z);
+                                    newVisuals.add(new Location(world, maxX, y2, z));
+                                }
                             }
                         }
                     }

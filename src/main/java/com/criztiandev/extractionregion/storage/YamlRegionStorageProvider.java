@@ -65,13 +65,10 @@ public class YamlRegionStorageProvider implements RegionStorageProvider {
                 }
                 
                 if (sec.contains("conduit.world")) {
-                    org.bukkit.World cWorld = org.bukkit.Bukkit.getWorld(sec.getString("conduit.world"));
-                    if (cWorld != null) {
-                        region.setConduitLocation(new org.bukkit.Location(cWorld, 
-                            sec.getInt("conduit.x"), 
-                            sec.getInt("conduit.y"), 
-                            sec.getInt("conduit.z")));
-                    }
+                    region.setConduitWorld(sec.getString("conduit.world"));
+                    region.setConduitX(sec.getInt("conduit.x"));
+                    region.setConduitY(sec.getInt("conduit.y"));
+                    region.setConduitZ(sec.getInt("conduit.z"));
                 }
                 
                 if (sec.contains("cooldownSequence")) {
@@ -141,6 +138,9 @@ public class YamlRegionStorageProvider implements RegionStorageProvider {
                 if (sec.contains("entryEnabled")) {
                     region.setEntryEnabled(sec.getBoolean("entryEnabled"));
                 }
+                if (sec.contains("requiredArmorTier")) {
+                    region.setRequiredArmorTier(sec.getString("requiredArmorTier"));
+                }
                 
                 if (sec.contains("possibleDurations")) {
                     String seqStr = sec.getString("possibleDurations");
@@ -192,11 +192,11 @@ public class YamlRegionStorageProvider implements RegionStorageProvider {
             
             config.set(path + ".type", region.getType().name());
             
-            if (region.getConduitLocation() != null && region.getConduitLocation().getWorld() != null) {
-                config.set(path + ".conduit.world", region.getConduitLocation().getWorld().getName());
-                config.set(path + ".conduit.x", region.getConduitLocation().getBlockX());
-                config.set(path + ".conduit.y", region.getConduitLocation().getBlockY());
-                config.set(path + ".conduit.z", region.getConduitLocation().getBlockZ());
+            if (region.getConduitWorld() != null) {
+                config.set(path + ".conduit.world", region.getConduitWorld());
+                config.set(path + ".conduit.x", region.getConduitX());
+                config.set(path + ".conduit.y", region.getConduitY());
+                config.set(path + ".conduit.z", region.getConduitZ());
             } else {
                 config.set(path + ".conduit", null);
             }
@@ -255,6 +255,7 @@ public class YamlRegionStorageProvider implements RegionStorageProvider {
             config.set(path + ".cooldownCommand", region.getCooldownCommand());
             config.set(path + ".entryFallbackCommand", region.getEntryFallbackCommand());
             config.set(path + ".entryEnabled", region.isEntryEnabled());
+            config.set(path + ".requiredArmorTier", region.getRequiredArmorTier());
             
             java.util.List<Integer> dSeq = region.getPossibleDurations();
             StringBuilder dSeqBuilder = new StringBuilder();

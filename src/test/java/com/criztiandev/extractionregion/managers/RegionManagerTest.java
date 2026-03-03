@@ -2,6 +2,7 @@ package com.criztiandev.extractionregion.managers;
 
 import com.criztiandev.extractionchest.ExtractionChestPlugin;
 import com.criztiandev.extractionchest.managers.ChestInstanceManager;
+import com.criztiandev.extractionchest.managers.HologramManager;
 import com.criztiandev.extractionchest.models.ChestInstance;
 import com.criztiandev.extractionregion.ExtractionRegionPlugin;
 import com.criztiandev.extractionregion.models.SavedRegion;
@@ -54,6 +55,9 @@ public class RegionManagerTest {
     @Mock
     private FileConfiguration configMock;
 
+    @Mock
+    private HologramManager hologramManagerMock;
+
     private RegionManager regionManager;
     private SavedRegion testRegion;
 
@@ -67,6 +71,7 @@ public class RegionManagerTest {
 
         when(pluginMock.getExtractionChestApi()).thenReturn(extractionChestApiMock);
         when(extractionChestApiMock.getChestInstanceManager()).thenReturn(chestInstanceManagerMock);
+        lenient().when(extractionChestApiMock.getHologramManager()).thenReturn(hologramManagerMock);
         lenient().when(pluginMock.getStorageProvider()).thenReturn(storageProviderMock);
         lenient().when(pluginMock.getConfig()).thenReturn(configMock);
         lenient().when(configMock.getInt("region.replenish-batch-size", 5)).thenReturn(5);
@@ -89,6 +94,8 @@ public class RegionManagerTest {
                 when(inst.getWorld()).thenReturn("world");
                 when(inst.getX()).thenReturn(50);
                 when(inst.getZ()).thenReturn(50);
+                lenient().when(inst.getId()).thenReturn("inside-" + i);
+                lenient().when(inst.isStationary()).thenReturn(false);
                 mockInstances.add(inst);
             }
 

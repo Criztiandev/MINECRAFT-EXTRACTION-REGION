@@ -38,7 +38,7 @@ public class ExtractionMechanicsListenerTest {
     private ExtractionMechanicsListener listener;
     private SavedRegion extractionRegion;
     private Location regionLocation;
-
+    private org.mockito.MockedStatic<org.bukkit.Bukkit> mockedBukkit;
     @BeforeEach
     public void setup() {
         listener = new ExtractionMechanicsListener(plugin);
@@ -46,13 +46,24 @@ public class ExtractionMechanicsListenerTest {
         extractionRegion = new SavedRegion("test_extract", "world", 0, 10, 0, 10);
         extractionRegion.setType(RegionType.EXTRACTION);
         regionLocation = new Location(world, 5, 64, 5);
+        lenient().when(world.getName()).thenReturn("world");
         extractionRegion.setConduitLocation(regionLocation);
         
         lenient().when(plugin.getRegionManager()).thenReturn(regionManager);
-        lenient().when(world.getName()).thenReturn("world");
         lenient().when(block.getWorld()).thenReturn(world);
         lenient().when(block.getLocation()).thenReturn(regionLocation);
         lenient().when(player.hasPermission(anyString())).thenReturn(false);
+        lenient().when(block.getType()).thenReturn(org.bukkit.Material.STONE_BUTTON);
+        
+        mockedBukkit = mockStatic(org.bukkit.Bukkit.class);
+        mockedBukkit.when(() -> org.bukkit.Bukkit.getWorld(anyString())).thenReturn(world);
+    }
+    
+    @org.junit.jupiter.api.AfterEach
+    public void tearDown() {
+        if (mockedBukkit != null) {
+            mockedBukkit.close();
+        }
     }
 
     @Test

@@ -61,8 +61,8 @@ public class RegionChatPromptListener implements Listener {
 
             try {
                 int minutes = Integer.parseInt(input);
-                if (minutes <= 0) {
-                    player.sendMessage("§cPlease enter a number greater than 0.");
+                if (minutes <= 0 || minutes > 1440) {
+                    player.sendMessage("§cPlease enter a number between 1 and 1440 minutes (24 hours).");
                     return;
                 }
 
@@ -101,6 +101,100 @@ public class RegionChatPromptListener implements Listener {
 
                 String prefix = "";
                 String rId = "";
+                
+                if (state.startsWith("chest_chance_") || state.startsWith("chest_fallback_")) {
+                    plugin.getRegionManager().removePromptState(player.getUniqueId());
+                    String[] chestParts = state.split("_", 4);
+                    if (chestParts.length < 4) return;
+                    String chestRegionId = chestParts[2];
+                    String chestInstanceId = chestParts[3];
+                    
+                    com.criztiandev.extractionregion.models.SavedRegion cRegion = plugin.getRegionManager().getRegion(chestRegionId);
+                    com.criztiandev.extractionchest.models.ChestInstance cInst = plugin.getExtractionChestApi().getChestInstanceManager().getInstanceById(chestInstanceId);
+                    if (cRegion == null || cInst == null) {
+                        player.sendMessage("§cRegion or Chest Instance no longer exists.");
+                        return;
+                    }
+
+                    if (state.startsWith("chest_chance_")) {
+                        try {
+                            int chance = Integer.parseInt(input);
+                            if (chance < 1 || chance > 100) {
+                                player.sendMessage("§cSpawn chance must be between 1 and 100.");
+                                return;
+                            }
+                            cInst.setSpawnChance(chance);
+                            player.sendMessage("§aSpawn chance set to " + chance + "%.");
+                        } catch (NumberFormatException e) {
+                            player.sendMessage("§cInvalid number. Please enter a valid percentage (1-100).");
+                            return;
+                        }
+                    } else if (state.startsWith("chest_fallback_")) {
+                        if (input.equalsIgnoreCase("none")) {
+                            cInst.setFallbackParentName(null);
+                            player.sendMessage("§aFallback tier removed. Chest will physically despawn if the chance roll fails.");
+                        } else {
+                            com.criztiandev.extractionchest.models.ParentChestDefinition def = plugin.getExtractionChestApi().getLootTableManager().getDefinition(input);
+                            if (def == null) {
+                                player.sendMessage("§cWarning: The loot table '" + input + "' doesn't seem to exist. It will be saved anyway, but you should create it soon!");
+                            }
+                            cInst.setFallbackParentName(input);
+                            player.sendMessage("§aFallback tier set to " + input + ".");
+                        }
+                    }
+
+                    plugin.getExtractionChestApi().getStorageProvider().saveInstance(cInst);
+                    Bukkit.getScheduler().runTask(plugin, () -> {
+                        new com.criztiandev.extractionregion.gui.ChestConfigGUI(plugin).openMenu(player, cRegion, chestInstanceId);
+                    });
+                    return;
+                }
+
+                // Handle bulk chance prompt: "bulk_chance_<regionId>_<tierName>"
+                if (state.startsWith("bulk_chance_")) {
+                    plugin.getRegionManager().removePromptState(player.getUniqueId());
+                    String suffix = state.substring("bulk_chance_".length()); // "<regionId>_<tierName>"
+                    int lastUnderscore = suffix.lastIndexOf("_");
+                    if (lastUnderscore < 0) return;
+                    String bulkRegionId = suffix.substring(0, lastUnderscore);
+                    String bulkTierName = suffix.substring(lastUnderscore + 1);
+
+                    com.criztiandev.extractionregion.models.SavedRegion bRegion = plugin.getRegionManager().getRegion(bulkRegionId);
+                    if (bRegion == null) { player.sendMessage("§cRegion no longer exists."); return; }
+
+                    try {
+                        int chance = Integer.parseInt(input);
+                        if (chance < 1 || chance > 100) {
+                            player.sendMessage("§cSpawn chance must be between 1 and 100.");
+                            return;
+                        }
+                        com.criztiandev.extractionchest.models.ChestTier bulkTier = com.criztiandev.extractionchest.models.ChestTier.valueOf(bulkTierName);
+                        int updated = 0;
+                        for (com.criztiandev.extractionchest.models.ChestInstance bi : plugin.getExtractionChestApi().getChestInstanceManager().getAllInstances()) {
+                            if (!bi.getWorld().equals(bRegion.getWorld())) continue;
+                            org.bukkit.Location bLoc = bi.getLocation(org.bukkit.Bukkit.getWorld(bi.getWorld()));
+                            if (bLoc.getBlockX() < bRegion.getMinX() || bLoc.getBlockX() > bRegion.getMaxX()) continue;
+                            if (bLoc.getBlockZ() < bRegion.getMinZ() || bLoc.getBlockZ() > bRegion.getMaxZ()) continue;
+                            com.criztiandev.extractionchest.models.ParentChestDefinition bDef = plugin.getExtractionChestApi().getLootTableManager().getDefinition(bi.getParentName());
+                            if (bDef == null || bDef.getTier() != bulkTier) continue;
+                            bi.setSpawnChance(chance);
+                            plugin.getExtractionChestApi().getStorageProvider().saveInstance(bi);
+                            updated++;
+                        }
+                        final com.criztiandev.extractionchest.models.ChestTier finalTier = bulkTier;
+                        final com.criztiandev.extractionregion.models.SavedRegion fRegion = bRegion;
+                        player.sendMessage("§b[Bulk Configure] §aSet spawn chance to §e" + chance + "% §afor §e" + updated + " §a" + bulkTierName + " chests in §b" + bulkRegionId + "§a.");
+                        Bukkit.getScheduler().runTask(plugin, () -> {
+                            new com.criztiandev.extractionregion.gui.RegionChestsCategoryGUI(plugin).openMenu(player, fRegion, finalTier, 0);
+                        });
+                    } catch (NumberFormatException e) {
+                        player.sendMessage("§cInvalid number. Please enter a valid percentage (1-100) or type 'cancel'.");
+                    } catch (IllegalArgumentException e) {
+                        player.sendMessage("§cInvalid tier name. Something went wrong.");
+                    }
+                    return;
+                }
+                
                 if (state.startsWith("extrc_cooldown_")) { prefix = "extrc_cooldown_"; rId = state.substring(prefix.length()); }
                 else if (state.startsWith("extrc_min_cap_")) { prefix = "extrc_min_cap_"; rId = state.substring(prefix.length()); }
                 else if (state.startsWith("extrc_max_cap_")) { prefix = "extrc_max_cap_"; rId = state.substring(prefix.length()); }

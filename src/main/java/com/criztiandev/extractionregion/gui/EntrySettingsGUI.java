@@ -125,6 +125,37 @@ public class EntrySettingsGUI {
         }
         inv.setItem(24, maintenanceItem);
 
+        // Slot 20: Entry Requirements
+        String currentTier = region.getRequiredArmorTier();
+        Material mat = switch (currentTier) {
+            case "LEATHER" -> Material.LEATHER_CHESTPLATE;
+            case "GOLDEN" -> Material.GOLDEN_CHESTPLATE;
+            case "CHAINMAIL" -> Material.CHAINMAIL_CHESTPLATE;
+            case "IRON" -> Material.IRON_CHESTPLATE;
+            case "DIAMOND" -> Material.DIAMOND_CHESTPLATE;
+            case "NETHERITE" -> Material.NETHERITE_CHESTPLATE;
+            default -> Material.BARRIER;
+        };
+        
+        ItemStack armorItem = new ItemStack(mat);
+        ItemMeta armorMeta = armorItem.getItemMeta();
+        if (armorMeta != null) {
+            armorMeta.setDisplayName("§e§lEntry Requirements");
+            armorMeta.setLore(Arrays.asList(
+                "§7Minimum Armor Tier: §f" + currentTier,
+                "",
+                "§eLeft-Click: §fCycle next tier",
+                "§cRight-Click: §fCycle previous tier",
+                "",
+                "§8Players must wear a full set of",
+                "§8armor equal to or better than this."
+            ));
+            armorMeta.getPersistentDataContainer().set(new NamespacedKey(plugin, "entry-action"), PersistentDataType.STRING, "req_armor");
+            armorMeta.getPersistentDataContainer().set(new NamespacedKey(plugin, "region-id"), PersistentDataType.STRING, region.getId());
+            armorItem.setItemMeta(armorMeta);
+        }
+        inv.setItem(20, armorItem);
+
         // Back Button (Slot 18)
         ItemStack backItem = new ItemStack(Material.ARROW);
         ItemMeta backMeta = backItem.getItemMeta();

@@ -19,14 +19,14 @@ public class SavedRegionTest {
     @Test
     public void testGetNextResetTime_DynamicInterval() {
         SavedRegion region = new SavedRegion("test", "world", 0, 0, 0, 0);
-        region.setResetIntervalMinutes(15); // Every 15 minutes
+        region.setResetIntervalMinutes(180); // Every 3 hours
 
         ZoneId phZoneId = ZoneId.of("Asia/Manila");
         ZonedDateTime now = ZonedDateTime.now(phZoneId);
         int currentMinuteOfDay = now.getHour() * 60 + now.getMinute();
 
-        // The expected next reset minute is the next multiple of 15
-        int expectedNextMinuteOfDay = ((currentMinuteOfDay / 15) + 1) * 15;
+        // The expected next reset minute is the next multiple of 180 (3 hours)
+        int expectedNextMinuteOfDay = ((currentMinuteOfDay / 180) + 1) * 180;
         
         // Calculate expected time
         ZonedDateTime expectedResetTime = now.withHour(0).withMinute(0).withSecond(0).withNano(0).plusMinutes(expectedNextMinuteOfDay);
@@ -37,7 +37,7 @@ public class SavedRegionTest {
         long actualResTimeMs = region.getNextResetTime();
 
         assertTrue(Math.abs(expectedResetTime.toInstant().toEpochMilli() - actualResTimeMs) <= 1500, 
-            "The dynamic timestamp should match the expected 15-minute chunk boundary within a ~1.5s tolerance.");
+            "The dynamic timestamp should match the expected 3-hour chunk boundary within a ~1.5s tolerance.");
     }
 
     @Test

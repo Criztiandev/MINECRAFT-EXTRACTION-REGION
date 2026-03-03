@@ -65,6 +65,16 @@ public class EntryTask implements Runnable {
                         }
                     }
 
+                    // Check Entry Requirements (Armor Restrictions)
+                    if (!"NONE".equals(region.getRequiredArmorTier())) {
+                        if (!hasRequiredArmor(player, region.getRequiredArmorTier())) {
+                            sendActionBar(player, "§cYou must wear full " + region.getRequiredArmorTier() + " armor or better to enter!");
+                            String cmd = region.getEntryFallbackCommand().replace("%player%", player.getName());
+                            Bukkit.dispatchCommand(Bukkit.getConsoleSender(), cmd);
+                            break;
+                        }
+                    }
+
                     boolean success = processEntrySequence(player, region);
                     if (success) {
                         // Start cooldown
@@ -151,5 +161,43 @@ public class EntryTask implements Runnable {
         double rZ = lowZ == highZ ? lowZ + 0.5 : random.nextInt(lowZ, highZ + 1) + 0.5;
 
         return new double[]{rX, rY, rZ};
+    }
+
+    private boolean hasRequiredArmor(Player player, String requiredTier) {
+        org.bukkit.inventory.ItemStack[] armor = player.getInventory().getArmorContents();
+        for (org.bukkit.inventory.ItemStack item : armor) {
+            if (item == null || item.getType() == org.bukkit.Material.AIR) return false;
+            if (!isArmorTierSufficient(item.getType(), requiredTier)) return false;
+        }
+        return true;
+    }
+
+    private boolean isArmorTierSufficient(org.bukkit.Material mat, String requiredTier) {
+        int requiredLevel = getArmorLevel(requiredTier);
+        int itemLevel = getArmorLevelFromMaterial(mat);
+        return itemLevel >= requiredLevel;
+    }
+
+    private int getArmorLevel(String tier) {
+        switch (tier) {
+            case "LEATHER": return 1;
+            case "GOLDEN": return 2;
+            case "CHAINMAIL": return 3;
+            case "IRON": return 4;
+            case "DIAMOND": return 5;
+            case "NETHERITE": return 6;
+            default: return 0;
+        }
+    }
+
+    private int getArmorLevelFromMaterial(org.bukkit.Material mat) {
+        String name = mat.name();
+        if (name.startsWith("LEATHER_")) return 1;
+        if (name.startsWith("GOLDEN_")) return 2;
+        if (name.startsWith("CHAINMAIL_")) return 3;
+        if (name.startsWith("IRON_")) return 4;
+        if (name.startsWith("DIAMOND_")) return 5;
+        if (name.startsWith("NETHERITE_")) return 6;
+        return 0;
     }
 }

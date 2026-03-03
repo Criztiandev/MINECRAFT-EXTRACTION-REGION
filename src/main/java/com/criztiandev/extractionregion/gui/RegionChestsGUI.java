@@ -24,19 +24,26 @@ public class RegionChestsGUI {
     }
 
     public void openMenu(Player player, SavedRegion region, int page) {
-        List<com.criztiandev.extractionchest.models.ChestInstance> allInstances = new java.util.ArrayList<>();
-        
+        java.util.Map<com.criztiandev.extractionchest.models.ChestTier, Integer> tierCounts = new java.util.HashMap<>();
+        for (com.criztiandev.extractionchest.models.ChestTier tier : com.criztiandev.extractionchest.models.ChestTier.values()) {
+            tierCounts.put(tier, 0);
+        }
+
         for (com.criztiandev.extractionchest.models.ChestInstance inst : plugin.getExtractionChestApi().getChestInstanceManager().getAllInstances()) {
             if (inst.getWorld().equals(region.getWorld())) {
                 org.bukkit.Location loc = inst.getLocation(org.bukkit.Bukkit.getWorld(inst.getWorld()));
                 if (loc.getBlockX() >= region.getMinX() && loc.getBlockX() <= region.getMaxX() &&
                     loc.getBlockZ() >= region.getMinZ() && loc.getBlockZ() <= region.getMaxZ()) {
-                    allInstances.add(inst);
+                    
+                    com.criztiandev.extractionchest.models.ParentChestDefinition def = plugin.getExtractionChestApi().getLootTableManager().getDefinition(inst.getParentName());
+                    if (def != null) {
+                        tierCounts.put(def.getTier(), tierCounts.get(def.getTier()) + 1);
+                    }
                 }
             }
         }
 
-        Inventory inv = Bukkit.createInventory(null, 54, TITLE + " - " + region.getId());
+        Inventory inv = Bukkit.createInventory(null, 27, TITLE + " - " + region.getId());
         
         ItemStack border = new ItemStack(Material.BLACK_STAINED_GLASS_PANE);
         ItemMeta bm = border.getItemMeta();
@@ -44,33 +51,40 @@ public class RegionChestsGUI {
             bm.setDisplayName(" ");
             border.setItemMeta(bm);
         }
-        for (int i = 45; i < 54; i++) inv.setItem(i, border);
+        for (int i = 18; i < 27; i++) inv.setItem(i, border);
 
-        int maxItemsPerPage = 45;
-        int startIndex = page * maxItemsPerPage;
-        int endIndex = Math.min(startIndex + maxItemsPerPage, allInstances.size());
-
-        int slot = 0;
-        for (int i = startIndex; i < endIndex; i++) {
-            com.criztiandev.extractionchest.models.ChestInstance inst = allInstances.get(i);
+        int[] slots = {11, 12, 13, 14, 15};
+        com.criztiandev.extractionchest.models.ChestTier[] tiers = com.criztiandev.extractionchest.models.ChestTier.values();
+        
+        for (int i = 0; i < tiers.length && i < slots.length; i++) {
+            com.criztiandev.extractionchest.models.ChestTier tier = tiers[i];
+            int count = tierCounts.get(tier);
             
-            ItemStack item = new ItemStack(Material.CHEST);
+            Material mat = switch (tier) {
+                case COMMON -> Material.CHEST;
+                case UNCOMMON -> Material.TRAPPED_CHEST;
+                case RARE -> Material.ENDER_CHEST;
+                case EPIC -> Material.BARREL;
+                case MYTHIC -> Material.SHULKER_BOX;
+                default -> Material.CHEST;
+            };
+            
+            ItemStack item = new ItemStack(mat);
             ItemMeta meta = item.getItemMeta();
             if (meta != null) {
-                meta.setDisplayName("§6Chest at " + inst.getX() + ", " + inst.getY() + ", " + inst.getZ());
+                meta.setDisplayName(getTierColor(tier) + "§l" + tier.name() + " CHESTS");
                 meta.setLore(Arrays.asList(
-                    "§7Type: §f" + inst.getParentName(),
-                    "§7World: §f" + inst.getWorld(),
+                    "§7Total Placed: §f" + count,
                     "",
-                    "§eClick to configure this",
-                    "§etype of chest."
+                    "§eClick to view and manage",
+                    "§eall " + tier.name() + " chests."
                 ));
-                meta.getPersistentDataContainer().set(new NamespacedKey(plugin, "chest-parent"), PersistentDataType.STRING, inst.getParentName());
-                meta.getPersistentDataContainer().set(new NamespacedKey(plugin, "region-chests-action"), PersistentDataType.STRING, "edit_chest");
+                meta.getPersistentDataContainer().set(new NamespacedKey(plugin, "region-chests-action"), PersistentDataType.STRING, "view_tier");
                 meta.getPersistentDataContainer().set(new NamespacedKey(plugin, "region-id"), PersistentDataType.STRING, region.getId());
+                meta.getPersistentDataContainer().set(new NamespacedKey(plugin, "chest-tier"), PersistentDataType.STRING, tier.name());
                 item.setItemMeta(meta);
             }
-            inv.setItem(slot++, item);
+            inv.setItem(slots[i], item);
         }
 
         // Back button
@@ -82,35 +96,19 @@ public class RegionChestsGUI {
             bmkn.getPersistentDataContainer().set(new NamespacedKey(plugin, "region-id"), PersistentDataType.STRING, region.getId());
             back.setItemMeta(bmkn);
         }
-        inv.setItem(49, back);
-
-        // Pagination buttons
-        if (page > 0) {
-            ItemStack prev = new ItemStack(Material.ARROW);
-            ItemMeta pm = prev.getItemMeta();
-            if (pm != null) {
-                pm.setDisplayName("§cPrevious Page");
-                pm.getPersistentDataContainer().set(new NamespacedKey(plugin, "region-chests-action"), PersistentDataType.STRING, "prev_page");
-                pm.getPersistentDataContainer().set(new NamespacedKey(plugin, "pagination-page"), PersistentDataType.INTEGER, page - 1);
-                pm.getPersistentDataContainer().set(new NamespacedKey(plugin, "region-id"), PersistentDataType.STRING, region.getId());
-                prev.setItemMeta(pm);
-            }
-            inv.setItem(45, prev);
-        }
-
-        if (endIndex < allInstances.size()) {
-            ItemStack next = new ItemStack(Material.ARROW);
-            ItemMeta nm = next.getItemMeta();
-            if (nm != null) {
-                nm.setDisplayName("§aNext Page");
-                nm.getPersistentDataContainer().set(new NamespacedKey(plugin, "region-chests-action"), PersistentDataType.STRING, "next_page");
-                nm.getPersistentDataContainer().set(new NamespacedKey(plugin, "pagination-page"), PersistentDataType.INTEGER, page + 1);
-                nm.getPersistentDataContainer().set(new NamespacedKey(plugin, "region-id"), PersistentDataType.STRING, region.getId());
-                next.setItemMeta(nm);
-            }
-            inv.setItem(53, next);
-        }
+        inv.setItem(22, back);
 
         player.openInventory(inv);
+    }
+    
+    private String getTierColor(com.criztiandev.extractionchest.models.ChestTier tier) {
+        return switch (tier) {
+            case COMMON -> "§f";
+            case UNCOMMON -> "§a";
+            case RARE -> "§9";
+            case EPIC -> "§5";
+            case MYTHIC -> "§6";
+            default -> "§f";
+        };
     }
 }

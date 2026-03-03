@@ -153,7 +153,8 @@ public class SQLiteRegionStorageProvider implements RegionStorageProvider {
                 "use_cooldown_command INTEGER NOT NULL DEFAULT 0",
                 "cooldown_command TEXT NOT NULL DEFAULT 'spawn %player%'",
                 "entry_fallback_command TEXT NOT NULL DEFAULT 'spawn %player%'",
-                "entry_enabled INTEGER NOT NULL DEFAULT 1"
+                "entry_enabled INTEGER NOT NULL DEFAULT 1",
+                "required_armor_tier TEXT NOT NULL DEFAULT 'NONE'"
             };
             
             for (String colDef : newColumns) {
@@ -263,12 +264,17 @@ public class SQLiteRegionStorageProvider implements RegionStorageProvider {
                             } catch (Exception ignored) {}
                             try { region.setEntryEnabled(rs.getInt("entry_enabled") == 1); } catch (Exception ignored) {}
                             
+                            try {
+                                String rArmor = rs.getString("required_armor_tier");
+                                if (rArmor != null) region.setRequiredArmorTier(rArmor);
+                            } catch (Exception ignored) {}
+                            
                             String conduitWorld = rs.getString("conduit_world");
                             if (conduitWorld != null) {
-                                org.bukkit.World bWorld = org.bukkit.Bukkit.getWorld(conduitWorld);
-                                if (bWorld != null) {
-                                    region.setConduitLocation(new org.bukkit.Location(bWorld, rs.getInt("conduit_x"), rs.getInt("conduit_y"), rs.getInt("conduit_z")));
-                                }
+                                region.setConduitWorld(conduitWorld);
+                                region.setConduitX(rs.getInt("conduit_x"));
+                                region.setConduitY(rs.getInt("conduit_y"));
+                                region.setConduitZ(rs.getInt("conduit_z"));
                             }
                             
                             region.setDropWorld(rs.getString("drop_world"));
@@ -338,8 +344,8 @@ public class SQLiteRegionStorageProvider implements RegionStorageProvider {
 
                 try {
                     try (PreparedStatement stmt = conn.prepareStatement(
-                            "INSERT INTO regions (id, type, world, min_x, max_x, min_y, max_y, min_z, max_z, next_reset_time, reset_interval_minutes, conduit_world, conduit_x, conduit_y, conduit_z, cooldown_sequence, cooldown_index, max_capacity, min_capacity, cooldown_end_time, mimic_enabled, mimic_chance, announcement_radius, drop_world, drop_min_x, drop_max_x, drop_min_y, drop_max_y, drop_min_z, drop_max_z, slow_falling_seconds, blindness_seconds, ext_spawn_world, ext_spawn_x, ext_spawn_y, ext_spawn_z, ext_spawn_yaw, ext_spawn_pitch, possible_durations, beam_color, alarm_sound, hologram_offset_x, hologram_offset_y, hologram_offset_z, hologram_scale, bypass_cooldown, extraction_use_command, extraction_command, use_cooldown_command, cooldown_command, entry_fallback_command, entry_enabled) " +
-                            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) " +
+                            "INSERT INTO regions (id, type, world, min_x, max_x, min_y, max_y, min_z, max_z, next_reset_time, reset_interval_minutes, conduit_world, conduit_x, conduit_y, conduit_z, cooldown_sequence, cooldown_index, max_capacity, min_capacity, cooldown_end_time, mimic_enabled, mimic_chance, announcement_radius, drop_world, drop_min_x, drop_max_x, drop_min_y, drop_max_y, drop_min_z, drop_max_z, slow_falling_seconds, blindness_seconds, ext_spawn_world, ext_spawn_x, ext_spawn_y, ext_spawn_z, ext_spawn_yaw, ext_spawn_pitch, possible_durations, beam_color, alarm_sound, hologram_offset_x, hologram_offset_y, hologram_offset_z, hologram_scale, bypass_cooldown, extraction_use_command, extraction_command, use_cooldown_command, cooldown_command, entry_fallback_command, entry_enabled, required_armor_tier) " +
+                            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) " +
                             "ON CONFLICT(id) DO UPDATE SET " +
                             "type=excluded.type, world=excluded.world, min_x=excluded.min_x, max_x=excluded.max_x, " +
                             "min_y=excluded.min_y, max_y=excluded.max_y, " +
@@ -358,7 +364,7 @@ public class SQLiteRegionStorageProvider implements RegionStorageProvider {
                             "hologram_offset_x=excluded.hologram_offset_x, hologram_offset_y=excluded.hologram_offset_y, hologram_offset_z=excluded.hologram_offset_z, hologram_scale=excluded.hologram_scale, bypass_cooldown=excluded.bypass_cooldown, " +
                             "extraction_use_command=excluded.extraction_use_command, extraction_command=excluded.extraction_command, " +
                             "use_cooldown_command=excluded.use_cooldown_command, cooldown_command=excluded.cooldown_command, " +
-                            "entry_fallback_command=excluded.entry_fallback_command, entry_enabled=excluded.entry_enabled")) {
+                            "entry_fallback_command=excluded.entry_fallback_command, entry_enabled=excluded.entry_enabled, required_armor_tier=excluded.required_armor_tier")) {
                         
                         stmt.setString(1, region.getId());
                         stmt.setString(2, region.getType().name());
@@ -372,11 +378,11 @@ public class SQLiteRegionStorageProvider implements RegionStorageProvider {
                         stmt.setLong(10, region.getNextResetTime());
                         stmt.setInt(11, region.getResetIntervalMinutes());
                         
-                        if (region.getConduitLocation() != null && region.getConduitLocation().getWorld() != null) {
-                            stmt.setString(12, region.getConduitLocation().getWorld().getName());
-                            stmt.setInt(13, region.getConduitLocation().getBlockX());
-                            stmt.setInt(14, region.getConduitLocation().getBlockY());
-                            stmt.setInt(15, region.getConduitLocation().getBlockZ());
+                        if (region.getConduitWorld() != null) {
+                            stmt.setString(12, region.getConduitWorld());
+                            stmt.setInt(13, region.getConduitX());
+                            stmt.setInt(14, region.getConduitY());
+                            stmt.setInt(15, region.getConduitZ());
                         } else {
                             stmt.setNull(12, java.sql.Types.VARCHAR);
                             stmt.setNull(13, java.sql.Types.INTEGER);
@@ -445,6 +451,7 @@ public class SQLiteRegionStorageProvider implements RegionStorageProvider {
                         stmt.setString(50, region.getCooldownCommand());
                         stmt.setString(51, region.getEntryFallbackCommand());
                         stmt.setInt(52, region.isEntryEnabled() ? 1 : 0);
+                        stmt.setString(53, region.getRequiredArmorTier());
                         
                         stmt.executeUpdate();
                     }

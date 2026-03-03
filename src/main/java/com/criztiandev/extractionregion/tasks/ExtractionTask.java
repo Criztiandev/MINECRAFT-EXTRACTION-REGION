@@ -363,45 +363,72 @@ public class ExtractionTask extends BukkitRunnable {
     }
 
     private void triggerMimicTrap(SavedRegion region) {
-        if (plugin.getConfig().getBoolean("extraction.mimic.explode", true)) {
-            float power = (float) plugin.getConfig().getDouble("extraction.mimic.explosion_power", 4.0);
-            region.getConduitLocation().getWorld().createExplosion(region.getConduitLocation(), power, false, false);
-        }
-        
-        String mobTypeStr = plugin.getConfig().getString("extraction.mimic.mob_type", "ZOMBIE");
-        int spawnCount = plugin.getConfig().getInt("extraction.mimic.spawn_count", 2);
-        String customName = plugin.getConfig().getString("extraction.mimic.custom_name", "&cMimic Guard");
-        
-        EntityType type;
-        try {
-            type = EntityType.valueOf(mobTypeStr.toUpperCase());
-        } catch (Exception e) {
-            type = EntityType.ZOMBIE;
-        }
-        
-        for (int i = 0; i < spawnCount; i++) {
-            org.bukkit.entity.Entity entity = region.getConduitLocation().getWorld().spawnEntity(region.getConduitLocation().clone().add(0, 1.5, 0), type);
-            entity.setCustomName(customName.replace("&", "§"));
-            entity.setCustomNameVisible(true);
-            
-            if (entity instanceof org.bukkit.entity.LivingEntity) {
-                org.bukkit.entity.LivingEntity living = (org.bukkit.entity.LivingEntity) entity;
-                org.bukkit.inventory.EntityEquipment equip = living.getEquipment();
-                if (equip != null) {
-                    equip.setHelmet(getItem(plugin.getConfig().getString("extraction.mimic.equipment.helmet")));
-                    equip.setChestplate(getItem(plugin.getConfig().getString("extraction.mimic.equipment.chestplate")));
-                    equip.setLeggings(getItem(plugin.getConfig().getString("extraction.mimic.equipment.leggings")));
-                    equip.setBoots(getItem(plugin.getConfig().getString("extraction.mimic.equipment.boots")));
-                    equip.setItemInMainHand(getItem(plugin.getConfig().getString("extraction.mimic.equipment.main_hand")));
-                    equip.setItemInOffHand(getItem(plugin.getConfig().getString("extraction.mimic.equipment.off_hand")));
-                }
-            }
-        }
-        
+        Location loc = region.getConduitLocation();
         String trapMsg = plugin.getConfig().getString("extraction.messages.mimic_trap", "&8[&c!&8] &cThe extraction point at &b%region% &cwas a Mimic Trap!");
         Bukkit.broadcastMessage(trapMsg.replace("%region%", region.getId()).replace("&", "§"));
-        
+
+        // Apply capacity and cooldown immediately so players can't spam it while it ticks
         applyCapacityAndCooldown(region, true);
+
+        // Ticking Time Bomb Effect (2 seconds = 40 ticks)
+        new BukkitRunnable() {
+            int ticks = 0;
+            @Override
+            public void run() {
+                if (ticks >= 40) {
+                    // Detonate
+                    if (plugin.getConfig().getBoolean("extraction.mimic.explode", true)) {
+                        float power = (float) plugin.getConfig().getDouble("extraction.mimic.explosion_power", 4.0);
+                        loc.getWorld().createExplosion(loc, power, false, false);
+                    }
+                    
+                    // Spawn Guards
+                    String mobTypeStr = plugin.getConfig().getString("extraction.mimic.mob_type", "ZOMBIE");
+                    int spawnCount = plugin.getConfig().getInt("extraction.mimic.spawn_count", 2);
+                    String customName = plugin.getConfig().getString("extraction.mimic.custom_name", "&cMimic Guard");
+                    
+                    EntityType type;
+                    try {
+                        type = EntityType.valueOf(mobTypeStr.toUpperCase());
+                    } catch (Exception e) {
+                        type = EntityType.ZOMBIE;
+                    }
+                    
+                    for (int i = 0; i < spawnCount; i++) {
+                        org.bukkit.entity.Entity entity = loc.getWorld().spawnEntity(loc.clone().add(0, 1.5, 0), type);
+                        entity.setCustomName(customName.replace("&", "§"));
+                        entity.setCustomNameVisible(true);
+                        
+                        if (entity instanceof org.bukkit.entity.LivingEntity) {
+                            org.bukkit.entity.LivingEntity living = (org.bukkit.entity.LivingEntity) entity;
+                            org.bukkit.inventory.EntityEquipment equip = living.getEquipment();
+                            if (equip != null) {
+                                equip.setHelmet(getItem(plugin.getConfig().getString("extraction.mimic.equipment.helmet")));
+                                equip.setChestplate(getItem(plugin.getConfig().getString("extraction.mimic.equipment.chestplate")));
+                                equip.setLeggings(getItem(plugin.getConfig().getString("extraction.mimic.equipment.leggings")));
+                                equip.setBoots(getItem(plugin.getConfig().getString("extraction.mimic.equipment.boots")));
+                                equip.setItemInMainHand(getItem(plugin.getConfig().getString("extraction.mimic.equipment.main_hand")));
+                                equip.setItemInOffHand(getItem(plugin.getConfig().getString("extraction.mimic.equipment.off_hand")));
+                            }
+                        }
+                    }
+                    this.cancel();
+                    return;
+                }
+                
+                // Tick sound every 4 ticks (5 times a second)
+                if (ticks % 4 == 0) {
+                    loc.getWorld().playSound(loc, org.bukkit.Sound.BLOCK_NOTE_BLOCK_HAT, 1.0f, 2.0f);
+                    loc.getWorld().spawnParticle(org.bukkit.Particle.SMOKE, loc.clone().add(0.5, 1.0, 0.5), 10, 0.2, 0.2, 0.2, 0.05);
+                }
+                // Faster ticking at the very end
+                if (ticks > 30 && ticks % 2 == 0) {
+                    loc.getWorld().playSound(loc, org.bukkit.Sound.BLOCK_NOTE_BLOCK_HAT, 1.0f, 2.0f);
+                }
+                
+                ticks++;
+            }
+        }.runTaskTimer(plugin, 0L, 1L);
     }
     
     private org.bukkit.inventory.ItemStack getItem(String materialStr) {

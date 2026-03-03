@@ -79,6 +79,7 @@ public class ExtractionTaskTest {
         mockedBukkit = mockStatic(Bukkit.class);
         mockedBukkit.when(Bukkit::getOnlinePlayers).thenReturn(Collections.singletonList(player));
         mockedBukkit.when(() -> Bukkit.getPlayer(any(UUID.class))).thenReturn(player);
+        mockedBukkit.when(() -> Bukkit.getWorld(anyString())).thenReturn(world);
     }
 
     @AfterEach
@@ -152,7 +153,8 @@ public class ExtractionTaskTest {
         // Mock block in front of player to prevent "looked away" cancellation
         org.bukkit.block.Block block = mock(org.bukkit.block.Block.class);
         lenient().when(player.getTargetBlockExact(5)).thenReturn(block);
-        lenient().when(block.getLocation()).thenReturn(region.getConduitLocation());
+        Location cLoc1 = region.getConduitLocation();
+        lenient().when(block.getLocation()).thenReturn(cLoc1);
 
         // Process tick
         task.run();
@@ -186,7 +188,8 @@ public class ExtractionTaskTest {
         // Mock block in front of player
         org.bukkit.block.Block block = mock(org.bukkit.block.Block.class);
         lenient().when(player.getTargetBlockExact(5)).thenReturn(block);
-        lenient().when(block.getLocation()).thenReturn(region.getConduitLocation());
+        Location cLoc2 = region.getConduitLocation();
+        lenient().when(block.getLocation()).thenReturn(cLoc2);
 
         task.run();
 
@@ -263,7 +266,8 @@ public class ExtractionTaskTest {
         // Mock block in front of player
         org.bukkit.block.Block block = mock(org.bukkit.block.Block.class);
         lenient().when(player.getTargetBlockExact(5)).thenReturn(block);
-        lenient().when(block.getLocation()).thenReturn(region.getConduitLocation());
+        Location cLoc3 = region.getConduitLocation();
+        lenient().when(block.getLocation()).thenReturn(cLoc3);
         
         // Process tick (which completes the session and executes extraction)
         task.run();

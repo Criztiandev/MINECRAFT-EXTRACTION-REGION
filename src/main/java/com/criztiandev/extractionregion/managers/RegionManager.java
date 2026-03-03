@@ -129,6 +129,8 @@ public class RegionManager {
     
     public int forceReplenish(SavedRegion region) {
         java.util.List<com.criztiandev.extractionchest.models.ChestInstance> chestsToReplenish = new java.util.ArrayList<>();
+        java.util.Set<String> skipInstances = new java.util.HashSet<>(); // IDs of chests that should stay EMPTY this cycle
+
         for (com.criztiandev.extractionchest.models.ChestInstance inst : plugin.getExtractionChestApi().getChestInstanceManager().getAllInstances()) {
             if (inst.getWorld().equals(region.getWorld())) {
                 int cx = inst.getX();
@@ -139,27 +141,72 @@ public class RegionManager {
                 }
             }
         }
-        
+
         if (chestsToReplenish.isEmpty()) return 0;
 
-        if (region.isShuffleChests() && chestsToReplenish.size() > 1) {
-            java.util.List<String> identities = new java.util.ArrayList<>();
+        if (region.isShuffleChests()) {
+            // Step 1: Collect all non-stationary chests and shuffle their loot-table assignments
+            java.util.List<com.criztiandev.extractionchest.models.ChestInstance> shuffleable = new java.util.ArrayList<>();
+            java.util.List<String> parentNames = new java.util.ArrayList<>();
+
             for (com.criztiandev.extractionchest.models.ChestInstance inst : chestsToReplenish) {
-                identities.add(inst.getParentName());
-            }
-            java.util.Collections.shuffle(identities);
-            
-            for (int i = 0; i < chestsToReplenish.size(); i++) {
-                com.criztiandev.extractionchest.models.ChestInstance inst = chestsToReplenish.get(i);
-                inst.setParentName(identities.get(i));
-                plugin.getExtractionChestApi().getStorageProvider().saveInstance(inst);
-                
-                // If the chest is already placed/visible, update hologram immediately.
-                if (inst.getState() == com.criztiandev.extractionchest.models.ChestState.READY || inst.getState() == com.criztiandev.extractionchest.models.ChestState.LOOTED) {
-                    plugin.getExtractionChestApi().getHologramManager().updateHologram(inst);
+                if (!inst.isStationary()) {
+                    shuffleable.add(inst);
+                    parentNames.add(inst.getParentName());
                 }
             }
+
+            // Randomly redistribute which loot table goes to which chest position
+            java.util.Collections.shuffle(parentNames);
+            for (int i = 0; i < shuffleable.size(); i++) {
+                shuffleable.get(i).setParentName(parentNames.get(i)); // in-memory only
+            }
+
+            // Step 2: Apply spawn-chance / fallback rolling on the now-shuffled assignments
+            for (com.criztiandev.extractionchest.models.ChestInstance inst : chestsToReplenish) {
+                if (inst.isStationary()) {
+                    // Stationary chests skip shuffling but still need their inventory cleared
+                    inst.setActiveInventory(null);
+                    inst.setState(com.criztiandev.extractionchest.models.ChestState.EMPTY);
+                    plugin.getExtractionChestApi().getHologramManager().deleteHologram(inst);
+                    continue;
+                }
+
+                int rng = java.util.concurrent.ThreadLocalRandom.current().nextInt(100) + 1;
+
+                if (rng > inst.getSpawnChance()) {
+                    // Failed roll
+                    String fallback = inst.getFallbackParentName();
+
+                    if (fallback == null || fallback.isEmpty()) {
+                        // No fallback — hide this chest for the cycle
+                        skipInstances.add(inst.getId());
+                        inst.setState(com.criztiandev.extractionchest.models.ChestState.EMPTY);
+                        plugin.getExtractionChestApi().getHologramManager().deleteHologram(inst);
+                        org.bukkit.World w = org.bukkit.Bukkit.getWorld(inst.getWorld());
+                        if (w != null) {
+                            w.getBlockAt(inst.getX(), inst.getY(), inst.getZ()).setType(org.bukkit.Material.AIR);
+                        }
+                        continue;
+                    } else {
+                        // Apply fallback tier for this cycle (in-memory only)
+                        inst.setParentName(fallback);
+                    }
+                }
+                // Clear stale inventory so fresh loot is rolled on respawn
+                inst.setActiveInventory(null);
+                inst.setState(com.criztiandev.extractionchest.models.ChestState.EMPTY);
+                plugin.getExtractionChestApi().getHologramManager().deleteHologram(inst);
+            }
+        } else {
+            // No shuffle — just clear all inventories so they all respawn with fresh loot
+            for (com.criztiandev.extractionchest.models.ChestInstance inst : chestsToReplenish) {
+                inst.setActiveInventory(null);
+                inst.setState(com.criztiandev.extractionchest.models.ChestState.EMPTY);
+                plugin.getExtractionChestApi().getHologramManager().deleteHologram(inst);
+            }
         }
+
 
         new org.bukkit.scheduler.BukkitRunnable() {
             int index = 0;
@@ -169,15 +216,17 @@ public class RegionManager {
             public void run() {
                 for (int i = 0; i < BATCH_SIZE && index < chestsToReplenish.size(); i++, index++) {
                     com.criztiandev.extractionchest.models.ChestInstance inst = chestsToReplenish.get(index);
-                    if (inst.getState() != com.criztiandev.extractionchest.models.ChestState.READY) {
-                        plugin.getExtractionChestApi().getChestInstanceManager().changeState(inst, com.criztiandev.extractionchest.models.ChestState.RESPAWNING);
-                    } else {
-                        com.criztiandev.extractionchest.models.ParentChestDefinition def = plugin.getExtractionChestApi().getLootTableManager().getDefinition(inst.getParentName());
-                        if (def != null && (inst.getActiveInventory() == null || inst.getActiveInventory().isEmpty())) {
-                            inst.setActiveInventory(plugin.getExtractionChestApi().getLootTableManager().rollLoot(def));
-                            plugin.getExtractionChestApi().getStorageProvider().saveInstance(inst);
-                        }
+
+                    // Skip chests that failed their roll with no fallback (they stay EMPTY/AIR this cycle)
+                    if (skipInstances.contains(inst.getId())) continue;
+
+                    // Roll fresh loot and trigger respawn
+                    com.criztiandev.extractionchest.models.ParentChestDefinition def = plugin.getExtractionChestApi().getLootTableManager().getDefinition(inst.getParentName());
+                    if (def != null) {
+                        inst.setActiveInventory(plugin.getExtractionChestApi().getLootTableManager().rollLoot(def));
+                        plugin.getExtractionChestApi().getStorageProvider().saveInstance(inst);
                     }
+                    plugin.getExtractionChestApi().getChestInstanceManager().changeState(inst, com.criztiandev.extractionchest.models.ChestState.RESPAWNING);
                 }
                 if (index >= chestsToReplenish.size()) {
                     this.cancel();
@@ -186,6 +235,7 @@ public class RegionManager {
         }.runTaskTimer(plugin, 1L, 1L);
         return chestsToReplenish.size();
     }
+
 
     public void addTimerConfiguringPlayer(UUID uuid, String regionId) {
         timerConfiguringPlayers.put(uuid, regionId);

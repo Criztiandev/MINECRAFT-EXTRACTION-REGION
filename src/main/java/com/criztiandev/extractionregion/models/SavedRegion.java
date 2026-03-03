@@ -16,8 +16,9 @@ public class SavedRegion {
 
     // EXTRACTION REGION FIELDS
     private RegionType type = RegionType.CHEST_REPLENISH;
-    private org.bukkit.Location conduitLocation;
-    private java.util.List<Integer> cooldownSequence = new java.util.ArrayList<>(java.util.Arrays.asList(5, 10, 15, 25));
+    private String conduitWorld;
+    private int conduitX, conduitY, conduitZ;
+    private java.util.List<Integer> cooldownSequence = new java.util.ArrayList<>(java.util.Arrays.asList(15));
     private int cooldownIndex = 0;
     private int maxCapacity = 5;
     private int minCapacity = 1;
@@ -56,6 +57,7 @@ public class SavedRegion {
     private int entryCooldownMinutes = 5;
     private String entryFallbackCommand = "spawn %player%";
     private boolean entryEnabled = true;
+    private String requiredArmorTier = "NONE";
     private java.util.Map<java.util.UUID, Long> playerEntryCooldowns = new java.util.HashMap<>();
 
     public SavedRegion(String id, String world, int minX, int maxX, int minZ, int maxZ) {
@@ -74,18 +76,28 @@ public class SavedRegion {
         
         java.time.ZoneId phZoneId = java.time.ZoneId.of("Asia/Manila");
         java.time.ZonedDateTime manilaTime = java.time.ZonedDateTime.now(phZoneId);
-        int currentMinuteOfDay = manilaTime.getHour() * 60 + manilaTime.getMinute();
+        int currentHour = manilaTime.getHour();
+        int currentMinute = manilaTime.getMinute();
         
-        if (currentMinuteOfDay % resetIntervalMinutes == 0 && lastResetMinuteOfDay != currentMinuteOfDay) {
+        int intervalHours = resetIntervalMinutes / 60;
+        if (intervalHours <= 0) return 0;
+        
+        if (currentMinute == 0 && currentHour % intervalHours == 0 && lastResetMinuteOfDay != currentHour) {
             // It's due right now! Return a past timestamp to trigger the UI "Pending/Processing..." state
             return System.currentTimeMillis() - 1000; 
         }
         
-        int minutesToNext = resetIntervalMinutes - (currentMinuteOfDay % resetIntervalMinutes);
+        // Find the next hour that satisfies hour % intervalHours == 0
+        int hoursToNext = intervalHours - (currentHour % intervalHours);
         
-        // Accurately calculate seconds until the actual clock minute flips over
-        long secondsUntilNextMinute = 60 - manilaTime.getSecond();
-        long totalSecondsToNext = ((minutesToNext - 1) * 60L) + secondsUntilNextMinute;
+        // If we are currently inside the trigger hour but past minute 0, the next trigger is a full interval away
+        if (currentHour % intervalHours == 0 && currentMinute > 0) {
+            hoursToNext = intervalHours; 
+        }
+        
+        // Target time is exactly at the top of the hour, 'hoursToNext' hours from now minus the minutes/seconds we've already passed in the current hour
+        long secondsUntilNextHour = (60 - currentMinute - 1) * 60L + (60 - manilaTime.getSecond());
+        long totalSecondsToNext = ((hoursToNext - 1) * 3600L) + secondsUntilNextHour;
         
         return System.currentTimeMillis() + (totalSecondsToNext * 1000L);
     }
@@ -173,23 +185,42 @@ public class SavedRegion {
     }
 
     public org.bukkit.Location getConduitLocation() {
-        return conduitLocation;
+        if (conduitWorld == null) return null;
+        org.bukkit.World w = org.bukkit.Bukkit.getWorld(conduitWorld);
+        if (w == null) return null;
+        return new org.bukkit.Location(w, conduitX, conduitY, conduitZ);
     }
 
     public void setConduitLocation(org.bukkit.Location conduitLocation) {
-        this.conduitLocation = conduitLocation;
+        if (conduitLocation == null) {
+            this.conduitWorld = null;
+            return;
+        }
+        if (conduitLocation.getWorld() != null) this.conduitWorld = conduitLocation.getWorld().getName();
+        this.conduitX = conduitLocation.getBlockX();
+        this.conduitY = conduitLocation.getBlockY();
+        this.conduitZ = conduitLocation.getBlockZ();
     }
+    
+    public String getConduitWorld() { return conduitWorld; }
+    public void setConduitWorld(String conduitWorld) { this.conduitWorld = conduitWorld; }
+    public int getConduitX() { return conduitX; }
+    public void setConduitX(int conduitX) { this.conduitX = conduitX; }
+    public int getConduitY() { return conduitY; }
+    public void setConduitY(int conduitY) { this.conduitY = conduitY; }
+    public int getConduitZ() { return conduitZ; }
+    public void setConduitZ(int conduitZ) { this.conduitZ = conduitZ; }
 
     public java.util.List<Integer> getCooldownSequence() {
         if (cooldownSequence == null || cooldownSequence.isEmpty()) {
-            return new java.util.ArrayList<>(java.util.Arrays.asList(10));
+            return new java.util.ArrayList<>(java.util.Arrays.asList(15));
         }
         return cooldownSequence;
     }
 
     public void setCooldownSequence(java.util.List<Integer> cooldownSequence) {
         if (cooldownSequence == null || cooldownSequence.isEmpty()) {
-            this.cooldownSequence = new java.util.ArrayList<>(java.util.Arrays.asList(5, 10, 15, 25));
+            this.cooldownSequence = new java.util.ArrayList<>(java.util.Arrays.asList(15));
         } else {
             this.cooldownSequence = cooldownSequence;
         }
@@ -561,6 +592,14 @@ public class SavedRegion {
 
     public void setEntryEnabled(boolean entryEnabled) {
         this.entryEnabled = entryEnabled;
+    }
+
+    public String getRequiredArmorTier() {
+        return requiredArmorTier;
+    }
+
+    public void setRequiredArmorTier(String requiredArmorTier) {
+        this.requiredArmorTier = requiredArmorTier;
     }
 }
 
