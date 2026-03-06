@@ -120,21 +120,28 @@ public class ExtractionTask extends BukkitRunnable {
                     
                     String hexColor = session.region.getBeamColor();
                     java.awt.Color awtColor = java.awt.Color.RED;
+                    // Cache decoding instead of doing it hundreds of times!
                     try {
-                        awtColor = java.awt.Color.decode(hexColor);
+                        if (hexColor != null && !hexColor.isEmpty()) {
+                            if (hexColor.startsWith("#")) {
+                                awtColor = java.awt.Color.decode(hexColor);
+                            } else {
+                                awtColor = (java.awt.Color) java.awt.Color.class.getField(hexColor.toUpperCase()).get(null);
+                            }
+                        }
                     } catch (Exception ignored) {}
                     
                     org.bukkit.Color color = org.bukkit.Color.fromRGB(awtColor.getRed(), awtColor.getGreen(), awtColor.getBlue());
                     org.bukkit.Particle.DustOptions dust = new org.bukkit.Particle.DustOptions(color, 2.0f);
                     
                     double maxOffset = world.getMaxHeight() - center.getY();
-                    for (double y = 0; y < maxOffset; y += 2.0) {
+                    for (double y = 0; y < maxOffset; y += 5.0) { // Reduced density from 2.0 to 5.0
                         try {
-                            world.spawnParticle(org.bukkit.Particle.DUST, center.clone().add(0, y, 0), 5, 0.2, 1.0, 0.2, 0.0, dust);
+                            world.spawnParticle(org.bukkit.Particle.DUST, center.clone().add(0, y, 0), 3, 0.2, 1.0, 0.2, 0.0, dust);
                         } catch (Exception ignored) {}
                         
-                        if (y % 4.0 < 2.0) {
-                            world.spawnParticle(org.bukkit.Particle.WITCH, center.clone().add(0, y, 0), 2, 0.2, 1.0, 0.2, 0.0);
+                        if (y % 10.0 < 5.0) { // Reduced from 4.0 to 10.0
+                            world.spawnParticle(org.bukkit.Particle.WITCH, center.clone().add(0, y, 0), 1, 0.2, 1.0, 0.2, 0.0);
                         }
                     }
                     // Ring effect around player
@@ -184,6 +191,15 @@ public class ExtractionTask extends BukkitRunnable {
             int stay = plugin.getConfig().getInt("extraction.messages.start_title.stay", 60);
             int fadeOut = plugin.getConfig().getInt("extraction.messages.start_title.fade_out", 10);
             player.sendTitle(titleStr, "", fadeIn, stay, fadeOut);
+        }
+        
+        // Fire Custom Event
+        com.criztiandev.extractionregion.api.events.ExtractionStartEvent extractionStartEvent = new com.criztiandev.extractionregion.api.events.ExtractionStartEvent(player, region);
+        Bukkit.getPluginManager().callEvent(extractionStartEvent);
+        
+        if (extractionStartEvent.isCancelled()) {
+            sessions.remove(player.getUniqueId());
+            return;
         }
         
         // Announce to everyone in the chunk/region

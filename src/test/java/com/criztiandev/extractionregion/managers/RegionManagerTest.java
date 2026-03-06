@@ -93,10 +93,14 @@ public class RegionManagerTest {
                 ChestInstance inst = mock(ChestInstance.class);
                 when(inst.getWorld()).thenReturn("world");
                 when(inst.getX()).thenReturn(50);
+                when(inst.getY()).thenReturn(64);
                 when(inst.getZ()).thenReturn(50);
                 lenient().when(inst.getId()).thenReturn("inside-" + i);
                 lenient().when(inst.isStationary()).thenReturn(false);
                 mockInstances.add(inst);
+
+                org.bukkit.block.Block blockMock = mock(org.bukkit.block.Block.class);
+                lenient().when(worldMock.getBlockAt(50, 64, 50)).thenReturn(blockMock);
             }
 
             // 2. Inject 950 chests OUTSIDE the bounds

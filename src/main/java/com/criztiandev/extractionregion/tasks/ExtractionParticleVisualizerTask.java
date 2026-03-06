@@ -84,24 +84,32 @@ public class ExtractionParticleVisualizerTask extends BukkitRunnable {
                 // X edges (minZ and maxZ)
                 for (int x = startX; x <= endX; x++) {
                     if (Math.abs(minZ - pBlockZ) <= viewRadius) {
-                        int y1 = world.getHighestBlockYAt(x, minZ);
-                        newFakeBlocks.add(new Location(world, x, y1, minZ));
+                        if (world.isChunkLoaded(x >> 4, minZ >> 4)) {
+                            int y1 = world.getHighestBlockYAt(x, minZ);
+                            newFakeBlocks.add(new Location(world, x, y1, minZ));
+                        }
                     }
                     if (Math.abs(maxZ - pBlockZ) <= viewRadius) {
-                        int y2 = world.getHighestBlockYAt(x, maxZ);
-                        newFakeBlocks.add(new Location(world, x, y2, maxZ));
+                        if (world.isChunkLoaded(x >> 4, maxZ >> 4)) {
+                            int y2 = world.getHighestBlockYAt(x, maxZ);
+                            newFakeBlocks.add(new Location(world, x, y2, maxZ));
+                        }
                     }
                 }
                 
                 // Z edges (minX and maxX, skip corners)
                 for (int z = Math.max(minZ + 1, startZ); z < Math.min(maxZ, endZ + 1); z++) {
                     if (Math.abs(minX - pBlockX) <= viewRadius) {
-                        int y1 = world.getHighestBlockYAt(minX, z);
-                        newFakeBlocks.add(new Location(world, minX, y1, z));
+                        if (world.isChunkLoaded(minX >> 4, z >> 4)) {
+                            int y1 = world.getHighestBlockYAt(minX, z);
+                            newFakeBlocks.add(new Location(world, minX, y1, z));
+                        }
                     }
                     if (Math.abs(maxX - pBlockX) <= viewRadius) {
-                        int y2 = world.getHighestBlockYAt(maxX, z);
-                        newFakeBlocks.add(new Location(world, maxX, y2, z));
+                        if (world.isChunkLoaded(maxX >> 4, z >> 4)) {
+                            int y2 = world.getHighestBlockYAt(maxX, z);
+                            newFakeBlocks.add(new Location(world, maxX, y2, z));
+                        }
                     }
                 }
                 

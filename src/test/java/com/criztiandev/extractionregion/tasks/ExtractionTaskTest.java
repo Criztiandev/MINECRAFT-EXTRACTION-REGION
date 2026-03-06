@@ -80,6 +80,9 @@ public class ExtractionTaskTest {
         mockedBukkit.when(Bukkit::getOnlinePlayers).thenReturn(Collections.singletonList(player));
         mockedBukkit.when(() -> Bukkit.getPlayer(any(UUID.class))).thenReturn(player);
         mockedBukkit.when(() -> Bukkit.getWorld(anyString())).thenReturn(world);
+        
+        org.bukkit.plugin.PluginManager pluginManagerMock = mock(org.bukkit.plugin.PluginManager.class);
+        mockedBukkit.when(Bukkit::getPluginManager).thenReturn(pluginManagerMock);
     }
 
     @AfterEach

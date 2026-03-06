@@ -111,7 +111,8 @@ public class RegionChestsCategoryGUI {
                 "§7in this region at once.",
                 "",
                 "§eLeft-Click §7to set spawn chance for all",
-                "§eRight-Click §7to toggle stationary for all"
+                "§eRight-Click §7to toggle stationary for all",
+                "§eShift-Right-Click §7to set fallback for all"
             ));
             bulkMeta.getPersistentDataContainer().set(new NamespacedKey(plugin, "region-category-action"), PersistentDataType.STRING, "bulk_configure_tier");
             bulkMeta.getPersistentDataContainer().set(new NamespacedKey(plugin, "region-id"), PersistentDataType.STRING, region.getId());

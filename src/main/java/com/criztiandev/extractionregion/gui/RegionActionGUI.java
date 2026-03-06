@@ -275,6 +275,24 @@ public class RegionActionGUI {
         }
         inv.setItem(14, deleteItem);
         
+        // 6. Emergency Factory Reset (Slot 22)
+        ItemStack fixItem = new ItemStack(Material.REDSTONE_BLOCK);
+        ItemMeta fixMeta = fixItem.getItemMeta();
+        if (fixMeta != null) {
+            fixMeta.setDisplayName("§4§lEmergency Fix / Sweep");
+            fixMeta.setLore(Arrays.asList(
+                "§7Click to force reset this region.",
+                "§7This will securely purge any broken",
+                "§7or stuck holograms from the physical",
+                "§7world map, reset internal cooldowns,",
+                "§7and clear active extraction states."
+            ));
+            fixMeta.getPersistentDataContainer().set(new NamespacedKey(plugin, "region-action"), PersistentDataType.STRING, "emergency_fix");
+            fixMeta.getPersistentDataContainer().set(new NamespacedKey(plugin, "region-id"), PersistentDataType.STRING, region.getId());
+            fixItem.setItemMeta(fixMeta);
+        }
+        inv.setItem(22, fixItem);
+        
         // Manage Chests Button (Slot 15)
         if (region.getType() == com.criztiandev.extractionregion.models.RegionType.CHEST_REPLENISH) {
             ItemStack manageChestsItem = new ItemStack(Material.CHEST);

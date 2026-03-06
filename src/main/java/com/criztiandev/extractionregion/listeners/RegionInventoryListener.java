@@ -212,6 +212,54 @@ public class RegionInventoryListener implements Listener {
                     player.getInventory().addItem(wand);
                     player.sendMessage("§aYou have received the Region Wand for §e" + regionId + "§a.");
                     player.closeInventory();
+                } else if ("emergency_fix".equals(action)) {
+                    // Close UI first
+                    player.closeInventory();
+                    
+                    int entitiesWiped = 0;
+                    org.bukkit.World targetWorld = org.bukkit.Bukkit.getWorld(region.getWorld());
+                    if (targetWorld != null) {
+                        for (org.bukkit.entity.Entity e : targetWorld.getEntitiesByClasses(org.bukkit.entity.ArmorStand.class, org.bukkit.entity.TextDisplay.class)) {
+                            org.bukkit.Location el = e.getLocation();
+                            if (el.getBlockX() >= region.getMinX() && el.getBlockX() <= region.getMaxX() &&
+                                el.getBlockZ() >= region.getMinZ() && el.getBlockZ() <= region.getMaxZ()) {
+                                
+                                // Cleanse any floating Hologram or TextDisplay inside the zone
+                                e.remove();
+                                entitiesWiped++;
+                            }
+                        }
+                    }
+
+                    if (region.getType() == com.criztiandev.extractionregion.models.RegionType.EXTRACTION) {
+                        plugin.getExtractionTask().getSessions().values().removeIf(session -> session.getRegion().getId().equals(region.getId()));
+                        plugin.getHologramManager().removeHologram(region.getId()); // Hologram loop will auto-revive it next tick
+                    } else if (region.getType() == com.criztiandev.extractionregion.models.RegionType.CHEST_REPLENISH) {
+                        int chestsWiped = 0;
+                        if (plugin.getExtractionChestApi() != null) {
+                            for (com.criztiandev.extractionchest.models.ChestInstance inst : plugin.getExtractionChestApi().getChestInstanceManager().getAllInstances()) {
+                                if (inst.getWorld().equals(region.getWorld())) {
+                                    org.bukkit.World w = org.bukkit.Bukkit.getWorld(inst.getWorld());
+                                    if (w != null) {
+                                        org.bukkit.Location loc = inst.getLocation(w);
+                                        if (loc != null &&
+                                            loc.getBlockX() >= region.getMinX() && loc.getBlockX() <= region.getMaxX() &&
+                                            loc.getBlockZ() >= region.getMinZ() && loc.getBlockZ() <= region.getMaxZ()) {
+                                            
+                                            // Secure wipe loop
+                                            plugin.getExtractionChestApi().getChestInstanceManager().changeState(inst, com.criztiandev.extractionchest.models.ChestState.RESPAWNING);
+                                            plugin.getExtractionChestApi().getHologramManager().createHologram(inst);
+                                            chestsWiped++;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        player.sendMessage("§a[RegionEditor] Force-Refilled §e" + chestsWiped + "§a chests within the boundary.");
+                    }
+                    
+                    player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_ZOMBIE_VILLAGER_CURE, 1.0f, 1.0f);
+                    player.sendMessage("§a[RegionEditor] §e" + regionId + " §aEmergency Sweep Complete. Purged §e" + entitiesWiped + "§a stuck hologram entities and reset all caches.");
                 } else if ("manage_chests".equals(action)) {
                     new com.criztiandev.extractionregion.gui.RegionChestsGUI(plugin).openMenu(player, region, 0);
                 } else if ("edit_extraction".equals(action)) {
@@ -690,7 +738,11 @@ public class RegionInventoryListener implements Listener {
                     String bulkTierName = data.get(new NamespacedKey(plugin, "chest-tier"), PersistentDataType.STRING);
                     if (bulkTierName == null) return;
 
-                    if (event.getClick().isLeftClick()) {
+                    if (event.getClick().isShiftClick() && event.getClick().isRightClick()) {
+                        player.closeInventory();
+                        plugin.getRegionManager().addPromptState(player.getUniqueId(), "bulk_fallback_" + regionId + "_" + bulkTierName);
+                        player.sendMessage("§b[Bulk Configure] §ePlease type the exact Loot Table to use as a fallback (or 'none' to remove fallback) to apply to ALL §b" + bulkTierName + " §echests in §b" + regionId + "§e:");
+                    } else if (event.getClick().isLeftClick()) {
                         player.closeInventory();
                         plugin.getRegionManager().addPromptState(player.getUniqueId(), "bulk_chance_" + regionId + "_" + bulkTierName);
                         player.sendMessage("§b[Bulk Configure] §ePlease type the spawn chance (1-100) to apply to ALL §b" + bulkTierName + " §echests in §b" + regionId + "§e:");

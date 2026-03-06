@@ -41,7 +41,7 @@ public class HologramManager {
                 
                 // Prevent duplicate ghost holograms by ensuring the chunk is actually loaded
                 Location cLoc = region.getConduitLocation();
-                if (cLoc.getWorld() != null && cLoc.getWorld().isChunkLoaded(cLoc.getBlockX() >> 4, cLoc.getBlockZ() >> 4)) {
+                if (cLoc != null && cLoc.getWorld() != null && cLoc.getWorld().isChunkLoaded(cLoc.getBlockX() >> 4, cLoc.getBlockZ() >> 4)) {
                     // One final global sweep in a tiny radius before spawning to eradicate old valid ghosts in unloaded chunks
                     org.bukkit.NamespacedKey key = new org.bukkit.NamespacedKey(plugin, "extraction_hologram");
                     for (org.bukkit.entity.Entity e : cLoc.getWorld().getNearbyEntities(cLoc, 2.0, 5.0, 2.0)) {
@@ -55,8 +55,18 @@ public class HologramManager {
                 display.setText(fullText);
                 
                 // Allow dynamic updating of position and scale through the GUI
-                Location baseLoc = region.getConduitLocation().clone().add(region.getHologramOffsetX(), region.getHologramOffsetY(), region.getHologramOffsetZ());
-                if (display.getLocation().distanceSquared(baseLoc) > 0.01) {
+                Location cLoc = region.getConduitLocation();
+                if (cLoc == null || cLoc.getWorld() == null || !cLoc.getWorld().isChunkLoaded(cLoc.getBlockX() >> 4, cLoc.getBlockZ() >> 4)) {
+                    // Temporarily skip updating position if chunk/world is unloaded to prevent NPE
+                    continue;
+                }
+                
+                Location baseLoc = cLoc.clone().add(region.getHologramOffsetX(), region.getHologramOffsetY(), region.getHologramOffsetZ());
+                
+                // CRITICAL: Ensure Worlds match before distance check!
+                if (!display.getLocation().getWorld().equals(baseLoc.getWorld())) {
+                    display.teleport(baseLoc);
+                } else if (display.getLocation().distanceSquared(baseLoc) > 0.01) {
                     display.teleport(baseLoc);
                 }
                 

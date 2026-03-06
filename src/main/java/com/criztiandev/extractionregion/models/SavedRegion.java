@@ -32,7 +32,7 @@ public class SavedRegion {
     private String alarmSound = "BLOCK_BELL_RESONATE"; // Default alarm sound
     private boolean useCooldownCommand = false;
     private String cooldownCommand = "spawn %player%";
-    private boolean shuffleChests = false;
+    private boolean shuffleChests = true;
 
     // HOLOGRAM SETTINGS
     private double hologramOffsetX = 0.5;

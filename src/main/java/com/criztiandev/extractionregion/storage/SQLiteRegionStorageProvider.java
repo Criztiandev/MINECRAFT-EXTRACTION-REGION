@@ -230,10 +230,10 @@ public class SQLiteRegionStorageProvider implements RegionStorageProvider {
                             
                             try { region.setCooldownIndex(rs.getInt("cooldown_index")); } catch (Exception ignored) {}
                             
-                            region.setMaxCapacity(rs.getInt("max_capacity"));
-                            region.setMinCapacity(rs.getInt("min_capacity"));
-                            region.setCooldownEndTime(rs.getLong("cooldown_end_time"));
-                            region.setMimicEnabled(rs.getInt("mimic_enabled") == 1);
+                            try { region.setMaxCapacity(rs.getInt("max_capacity")); } catch (Exception ignored) {}
+                            try { region.setMinCapacity(rs.getInt("min_capacity")); } catch (Exception ignored) {}
+                            try { region.setCooldownEndTime(rs.getLong("cooldown_end_time")); } catch (Exception ignored) {}
+                            try { region.setMimicEnabled(rs.getInt("mimic_enabled") == 1); } catch (Exception ignored) {}
                             try { region.setMimicChance(rs.getInt("mimic_chance")); } catch (Exception ignored) {}
                             try { region.setBypassCooldown(rs.getInt("bypass_cooldown") == 1); } catch (Exception ignored) {}
                             try { region.setAnnouncementRadius(rs.getInt("announcement_radius")); } catch (Exception ignored) {}
@@ -269,33 +269,37 @@ public class SQLiteRegionStorageProvider implements RegionStorageProvider {
                                 if (rArmor != null) region.setRequiredArmorTier(rArmor);
                             } catch (Exception ignored) {}
                             
-                            String conduitWorld = rs.getString("conduit_world");
-                            if (conduitWorld != null) {
-                                region.setConduitWorld(conduitWorld);
-                                region.setConduitX(rs.getInt("conduit_x"));
-                                region.setConduitY(rs.getInt("conduit_y"));
-                                region.setConduitZ(rs.getInt("conduit_z"));
-                            }
+                            try {
+                                String conduitWorld = rs.getString("conduit_world");
+                                if (conduitWorld != null) {
+                                    region.setConduitWorld(conduitWorld);
+                                    region.setConduitX(rs.getInt("conduit_x"));
+                                    region.setConduitY(rs.getInt("conduit_y"));
+                                    region.setConduitZ(rs.getInt("conduit_z"));
+                                }
+                            } catch (Exception ignored) {}
                             
-                            region.setDropWorld(rs.getString("drop_world"));
-                            region.setDropMinX(rs.getInt("drop_min_x"));
-                            region.setDropMaxX(rs.getInt("drop_max_x"));
-                            region.setDropMinY(rs.getInt("drop_min_y"));
-                            region.setDropMaxY(rs.getInt("drop_max_y"));
-                            region.setDropMinZ(rs.getInt("drop_min_z"));
-                            region.setDropMaxZ(rs.getInt("drop_max_z"));
-                            region.setSlowFallingSeconds(rs.getInt("slow_falling_seconds"));
-                            region.setBlindnessSeconds(rs.getInt("blindness_seconds"));
+                            try { region.setDropWorld(rs.getString("drop_world")); } catch (Exception ignored) {}
+                            try { region.setDropMinX(rs.getInt("drop_min_x")); } catch (Exception ignored) {}
+                            try { region.setDropMaxX(rs.getInt("drop_max_x")); } catch (Exception ignored) {}
+                            try { region.setDropMinY(rs.getInt("drop_min_y")); } catch (Exception ignored) {}
+                            try { region.setDropMaxY(rs.getInt("drop_max_y")); } catch (Exception ignored) {}
+                            try { region.setDropMinZ(rs.getInt("drop_min_z")); } catch (Exception ignored) {}
+                            try { region.setDropMaxZ(rs.getInt("drop_max_z")); } catch (Exception ignored) {}
+                            try { region.setSlowFallingSeconds(rs.getInt("slow_falling_seconds")); } catch (Exception ignored) {}
+                            try { region.setBlindnessSeconds(rs.getInt("blindness_seconds")); } catch (Exception ignored) {}
                             
-                            String extSpawnWorld = rs.getString("ext_spawn_world");
-                            if (extSpawnWorld != null) {
-                                region.setExtractionSpawnWorld(extSpawnWorld);
-                                region.setExtractionSpawnX(rs.getDouble("ext_spawn_x"));
-                                region.setExtractionSpawnY(rs.getDouble("ext_spawn_y"));
-                                region.setExtractionSpawnZ(rs.getDouble("ext_spawn_z"));
-                                region.setExtractionSpawnYaw(rs.getFloat("ext_spawn_yaw"));
-                                region.setExtractionSpawnPitch(rs.getFloat("ext_spawn_pitch"));
-                            }
+                            try {
+                                String extSpawnWorld = rs.getString("ext_spawn_world");
+                                if (extSpawnWorld != null) {
+                                    region.setExtractionSpawnWorld(extSpawnWorld);
+                                    region.setExtractionSpawnX(rs.getDouble("ext_spawn_x"));
+                                    region.setExtractionSpawnY(rs.getDouble("ext_spawn_y"));
+                                    region.setExtractionSpawnZ(rs.getDouble("ext_spawn_z"));
+                                    region.setExtractionSpawnYaw(rs.getFloat("ext_spawn_yaw"));
+                                    region.setExtractionSpawnPitch(rs.getFloat("ext_spawn_pitch"));
+                                }
+                            } catch (Exception ignored) {}
                             
                             try { region.setExtractionUseCommand(rs.getInt("extraction_use_command") == 1); } catch (Exception ignored) {}
                             try {
