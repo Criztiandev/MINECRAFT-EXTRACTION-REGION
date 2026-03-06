@@ -84,6 +84,14 @@ public class HologramManager {
         String title = "§e§l" + region.getId().toUpperCase();
         String capacity = "§7Capacity: §f" + region.getCurrentCapacity() + " Players";
         
+        if (region.isLockedDown()) {
+            return Arrays.asList(
+                title,
+                "§c§l[LOCKED DOWN]",
+                capacity
+            );
+        }
+        
         if (region.isOnCooldown()) {
             long remaining = region.getCooldownEndTime() - System.currentTimeMillis();
             return Arrays.asList(

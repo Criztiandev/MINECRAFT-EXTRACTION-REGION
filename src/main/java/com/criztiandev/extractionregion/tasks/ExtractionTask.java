@@ -159,6 +159,11 @@ public class ExtractionTask extends BukkitRunnable {
     public void handleButtonPress(Player player, SavedRegion region) {
         long now = System.currentTimeMillis();
         
+        if (region.isLockedDown()) {
+            player.sendMessage("§cThis extraction point is currently locked down.");
+            return;
+        }
+
         boolean bypassCooldown = region.isBypassCooldown();
         
         if (region.isOnCooldown() && !bypassCooldown) {
@@ -345,8 +350,8 @@ public class ExtractionTask extends BukkitRunnable {
         currentCap--;
         
         // Cooldown triggers immediately on EVERY extraction
-        int nextCooldown = region.getAndCycleNextCooldownMinutes();
-        region.setCooldownEndTime(System.currentTimeMillis() + ((long) nextCooldown * 60 * 1000));
+        int nextCooldownSeconds = region.getAndCycleNextCooldownMinutes(); // The backend stores this in seconds now
+        region.setCooldownEndTime(System.currentTimeMillis() + ((long) nextCooldownSeconds * 1000L));
         
         if (currentCap <= 0 || isMimic) {
             region.setCurrentCapacity(-1); // Resets capacity roll for when it comes off cooldown
@@ -363,10 +368,12 @@ public class ExtractionTask extends BukkitRunnable {
         if (!isMimic) {
             // Announce extraction success to radius
             int radius = region.getAnnouncementRadius();
-            String endChat = plugin.getConfig().getString("extraction.announcement.end_chat", "&eExtraction &b%region% &efinished! &7(Cap: &b%capacity%&7, Cooldown: &b%cooldown%m&7)");
+            String endChat = plugin.getConfig().getString("extraction.announcement.end_chat", "&eExtraction &b%region% &efinished! &7(Cap: &b%capacity%&7, Cooldown: &b%cooldown%&7)");
+            String formattedCooldown = com.criztiandev.extractionregion.utils.TimeUtil.formatDuration(nextCooldownSeconds * 1000L);
             String parsedEndChat = endChat.replace("%region%", region.getId())
                                           .replace("%capacity%", String.valueOf(currentCap <= 0 ? 0 : currentCap))
-                                          .replace("%cooldown%", String.valueOf(nextCooldown))
+                                          .replace("%cooldown%m", formattedCooldown) // Fallback for old configs that had 'm' hardcoded
+                                          .replace("%cooldown%", formattedCooldown)
                                           .replace("&", "§");
 
             Location cLoc = region.getConduitLocation();

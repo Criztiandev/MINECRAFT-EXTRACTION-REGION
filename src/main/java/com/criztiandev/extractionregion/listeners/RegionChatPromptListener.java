@@ -259,12 +259,12 @@ public class RegionChatPromptListener implements Listener {
                         java.util.List<Integer> seq = new java.util.ArrayList<>();
                         for (String part : input.split(",")) {
                             try {
-                                int val = Integer.parseInt(part.trim());
+                                int val = parseTimeInput(part.trim());
                                 if (val >= 0) seq.add(val);
-                            } catch (NumberFormatException ignored) {}
+                            } catch (IllegalArgumentException ignored) {}
                         }
                         if (seq.isEmpty()) {
-                            player.sendMessage("§cInvalid sequence. Please enter valid numbers (e.g., 15,25,30).");
+                            player.sendMessage("§cInvalid sequence. Please enter valid times (e.g., 10s, 1m, 3hr).");
                             return;
                         }
                         
@@ -349,6 +349,19 @@ public class RegionChatPromptListener implements Listener {
                             player.sendMessage("§cInvalid number. Please check your input or type 'cancel'.");
                             return;
                         }
+                    } else if (prefix.equals("entry_cooldown_")) {
+                        try {
+                            int seconds = parseTimeInput(input);
+                            if (seconds < 0) {
+                                player.sendMessage("§cPlease enter a positive time value.");
+                                return;
+                            }
+                            region.setEntryCooldownSeconds(seconds);
+                            player.sendMessage("§aSetting updated to " + seconds + " seconds.");
+                        } catch (IllegalArgumentException e) {
+                            player.sendMessage("§cInvalid time format. Use numbers with s, m, or h (e.g. 10s, 1m, 1h).");
+                            return;
+                        }
                     } else {
                         try {
                             int value = Integer.parseInt(input);
@@ -366,7 +379,6 @@ public class RegionChatPromptListener implements Listener {
                             else if (prefix.equals("extrc_radius_")) region.setAnnouncementRadius(value);
                             else if (prefix.equals("entry_slowfall_")) region.setSlowFallingSeconds(value);
                             else if (prefix.equals("entry_blindness_")) region.setBlindnessSeconds(value);
-                            else if (prefix.equals("entry_cooldown_")) region.setEntryCooldownMinutes(value);
                             
                             player.sendMessage("§aSetting updated to " + value + ".");
                         } catch (NumberFormatException e) {
@@ -389,6 +401,29 @@ public class RegionChatPromptListener implements Listener {
             } catch (Exception e) {
                 player.sendMessage("§cAn error occurred processing your input. type 'cancel' if stuck.");
             }
+        }
+    }
+    
+    private int parseTimeInput(String input) throws IllegalArgumentException {
+        input = input.trim().toLowerCase();
+        if (input.isEmpty()) throw new IllegalArgumentException("Empty input");
+        
+        try {
+            if (input.endsWith("s")) {
+                return Integer.parseInt(input.substring(0, input.length() - 1).trim());
+            } else if (input.endsWith("m")) {
+                return Integer.parseInt(input.substring(0, input.length() - 1).trim()) * 60;
+            } else if (input.endsWith("h") || input.endsWith("hr")) {
+                String numPart = input.endsWith("hr") ? input.substring(0, input.length() - 2) : input.substring(0, input.length() - 1);
+                return Integer.parseInt(numPart.trim()) * 3600;
+            } else if (input.endsWith("d")) {
+                return Integer.parseInt(input.substring(0, input.length() - 1).trim()) * 86400;
+            } else {
+                // Default to seconds if no suffix
+                return Integer.parseInt(input);
+            }
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("Invalid number format in time string");
         }
     }
 }

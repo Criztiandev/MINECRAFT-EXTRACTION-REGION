@@ -161,12 +161,9 @@ public class RegionManager {
             if (region.getChestStationaryOverrides().containsKey(coordKey)) {
                 inst.setStationary(region.getChestStationaryOverrides().get(coordKey));
             } else {
-                // User requested: "make all the chest to be shufflable except the legend and mythic"
-                String baseType = inst.getBaseParentName();
-                boolean isMythicOrLegendary = baseType != null && (baseType.equalsIgnoreCase("LEGEND") || baseType.equalsIgnoreCase("LEGENDARY") || baseType.equalsIgnoreCase("MYTHIC"));
-                inst.setStationary(isMythicOrLegendary);
+                inst.setStationary(false);
                 // Save it so we remember default state
-                region.getChestStationaryOverrides().put(coordKey, isMythicOrLegendary);
+                region.getChestStationaryOverrides().put(coordKey, false);
             }
 
             // 2. Spawn Chance
@@ -187,15 +184,12 @@ public class RegionManager {
         java.util.List<String> parentNames = new java.util.ArrayList<>();
 
         for (com.criztiandev.extractionchest.models.ChestInstance inst : chestsToReplenish) {
-            String baseType = inst.getBaseParentName();
-            boolean isMythicOrLegendary = baseType != null && (baseType.equalsIgnoreCase("LEGEND") || baseType.equalsIgnoreCase("LEGENDARY") || baseType.equalsIgnoreCase("MYTHIC"));
-            
-            if (inst.isStationary() || isMythicOrLegendary) {
+            if (inst.isStationary()) {
                 continue; 
             }
             
             shuffleable.add(inst);
-            parentNames.add(baseType);
+            parentNames.add(inst.getBaseParentName());
         }
 
         // Randomize the blueprints

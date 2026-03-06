@@ -42,12 +42,12 @@ public class ExtractionSettingsGUI {
             java.util.List<Integer> seq = region.getCooldownSequence();
             StringBuilder seqBuilder = new StringBuilder();
             for (int i = 0; i < seq.size(); i++) {
-                seqBuilder.append(seq.get(i));
-                if (i < seq.size() - 1) seqBuilder.append(",");
+                seqBuilder.append(com.criztiandev.extractionregion.utils.TimeUtil.formatDuration(seq.get(i) * 1000L));
+                if (i < seq.size() - 1) seqBuilder.append(", ");
             }
             
             cooldownMeta.setLore(Arrays.asList(
-                "§7Current: §f" + seqBuilder.toString() + " Minutes",
+                "§7Current: §f" + seqBuilder.toString(),
                 "§7(Progresses through list on each pop)",
                 "",
                 "§eLeft-Click: §fCycle Preset Sequences",
@@ -105,13 +105,13 @@ public class ExtractionSettingsGUI {
             java.util.List<Integer> dSeq = region.getPossibleDurations();
             StringBuilder dSeqBuilder = new StringBuilder();
             for (int i = 0; i < dSeq.size(); i++) {
-                dSeqBuilder.append(dSeq.get(i));
-                if (i < dSeq.size() - 1) dSeqBuilder.append(",");
+                dSeqBuilder.append(com.criztiandev.extractionregion.utils.TimeUtil.formatDuration(dSeq.get(i) * 1000L));
+                if (i < dSeq.size() - 1) dSeqBuilder.append(", ");
             }
             
             durationMeta.setLore(Arrays.asList(
                 "§7Time required to wait in zone.",
-                "§7Current: §f" + dSeqBuilder.toString() + " Seconds",
+                "§7Current: §f" + dSeqBuilder.toString(),
                 "§7(Picks a random duration from the list)",
                 "",
                 "§eLeft-Click: §fCycle Presets",
@@ -274,6 +274,48 @@ public class ExtractionSettingsGUI {
             holoItem.setItemMeta(holoMeta);
         }
         inv.setItem(26, holoItem);
+
+        // Slot 19: Lock Down Mode
+        boolean locked = region.isLockedDown();
+        ItemStack lockItem = new ItemStack(locked ? Material.IRON_DOOR : Material.OAK_DOOR);
+        ItemMeta lockMeta = lockItem.getItemMeta();
+        if (lockMeta != null) {
+            lockMeta.setDisplayName("§c§lLock Down Region");
+            lockMeta.setLore(Arrays.asList(
+                "§7Status: " + (locked ? "§c§lENABLED" : "§aDisabled"),
+                "§7If enabled, no one can extract",
+                "§7and the region is locked.",
+                "",
+                "§eLeft-Click: §fToggle Lock Down"
+            ));
+            lockMeta.getPersistentDataContainer().set(new NamespacedKey(plugin, "extrc-action"), PersistentDataType.STRING, "lockdown");
+            lockMeta.getPersistentDataContainer().set(new NamespacedKey(plugin, "region-id"), PersistentDataType.STRING, region.getId());
+            lockItem.setItemMeta(lockMeta);
+        }
+        inv.setItem(19, lockItem);
+
+        // Slot 20: Region Reset Timer
+        ItemStack timerItem = new ItemStack(Material.CLOCK);
+        ItemMeta timerMeta = timerItem.getItemMeta();
+        if (timerMeta != null) {
+            timerMeta.setDisplayName("§e§lPH Reset Timer");
+            int hours = region.getResetIntervalMinutes() / 60;
+            String timeDisplay = (hours > 0) ? hours + " Hours" : region.getResetIntervalMinutes() + " Minutes";
+            timerMeta.setLore(Arrays.asList(
+                "§7Current: Every §f" + timeDisplay,
+                "§7(Syncs relative to 12 AM PH Time)",
+                "",
+                "§7Automatically replenishes extraction",
+                "§7points when this cron triggers.",
+                "",
+                "§eClick: §fCycle Preset",
+                "§dShift-Click: §fSet exact mins in chat"
+            ));
+            timerMeta.getPersistentDataContainer().set(new NamespacedKey(plugin, "extrc-action"), PersistentDataType.STRING, "timer_extrc");
+            timerMeta.getPersistentDataContainer().set(new NamespacedKey(plugin, "region-id"), PersistentDataType.STRING, region.getId());
+            timerItem.setItemMeta(timerMeta);
+        }
+        inv.setItem(20, timerItem);
 
         // Back Button (Slot 18)
         ItemStack backItem = new ItemStack(Material.ARROW);

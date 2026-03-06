@@ -18,7 +18,7 @@ public class SavedRegion {
     private RegionType type = RegionType.CHEST_REPLENISH;
     private String conduitWorld;
     private int conduitX, conduitY, conduitZ;
-    private java.util.List<Integer> cooldownSequence = new java.util.ArrayList<>(java.util.Arrays.asList(15));
+    private java.util.List<Integer> cooldownSequence = new java.util.ArrayList<>(java.util.Arrays.asList(300));
     private int cooldownIndex = 0;
     private int maxCapacity = 5;
     private int minCapacity = 1;
@@ -33,6 +33,7 @@ public class SavedRegion {
     private boolean useCooldownCommand = false;
     private String cooldownCommand = "spawn %player%";
     private boolean shuffleChests = true;
+    private boolean isLockedDown = false;
 
     // HOLOGRAM SETTINGS
     private double hologramOffsetX = 0.5;
@@ -47,18 +48,18 @@ public class SavedRegion {
     private double extractionSpawnX, extractionSpawnY, extractionSpawnZ;
     private float extractionSpawnYaw, extractionSpawnPitch;
 
-    private java.util.List<Integer> possibleDurations = new java.util.ArrayList<>(java.util.Arrays.asList(5));
+    private java.util.List<Integer> possibleDurations = new java.util.ArrayList<>(java.util.Arrays.asList(10));
 
     // ENTRY REGION / DROP ZONE FIELDS
     private String dropWorld;
     private int dropMinX, dropMaxX, dropMinY, dropMaxY, dropMinZ, dropMaxZ;
     private int slowFallingSeconds = 10;
     private int blindnessSeconds = 3;
-    private int entryCooldownMinutes = 5;
+    private int entryCooldownSeconds = 10;
     private String entryFallbackCommand = "spawn %player%";
     private boolean entryEnabled = true;
     private String requiredArmorTier = "NONE";
-    private java.util.Map<java.util.UUID, Long> playerEntryCooldowns = new java.util.HashMap<>();
+    private java.util.Map<String, Long> playerEntryCooldowns = new java.util.HashMap<>();
 
     public SavedRegion(String id, String world, int minX, int maxX, int minZ, int maxZ) {
         this.id = id;
@@ -213,14 +214,14 @@ public class SavedRegion {
 
     public java.util.List<Integer> getCooldownSequence() {
         if (cooldownSequence == null || cooldownSequence.isEmpty()) {
-            return new java.util.ArrayList<>(java.util.Arrays.asList(15));
+            return new java.util.ArrayList<>(java.util.Arrays.asList(300));
         }
         return cooldownSequence;
     }
 
     public void setCooldownSequence(java.util.List<Integer> cooldownSequence) {
         if (cooldownSequence == null || cooldownSequence.isEmpty()) {
-            this.cooldownSequence = new java.util.ArrayList<>(java.util.Arrays.asList(15));
+            this.cooldownSequence = new java.util.ArrayList<>(java.util.Arrays.asList(300));
         } else {
             this.cooldownSequence = cooldownSequence;
         }
@@ -236,6 +237,14 @@ public class SavedRegion {
 
     public void setCooldownIndex(int cooldownIndex) {
         this.cooldownIndex = cooldownIndex;
+    }
+
+    public boolean isLockedDown() {
+        return isLockedDown;
+    }
+
+    public void setLockedDown(boolean lockedDown) {
+        isLockedDown = lockedDown;
     }
 
     /**
@@ -283,6 +292,8 @@ public class SavedRegion {
 
     public int getCurrentCapacity() {
         if (currentCapacity == -1) {
+            rollNewCapacity();
+        } else if (currentCapacity <= 0 && !isOnCooldown()) {
             rollNewCapacity();
         }
         return currentCapacity;
@@ -402,14 +413,14 @@ public class SavedRegion {
 
     public java.util.List<Integer> getPossibleDurations() {
         if (possibleDurations == null || possibleDurations.isEmpty()) {
-            return new java.util.ArrayList<>(java.util.Arrays.asList(5));
+            return new java.util.ArrayList<>(java.util.Arrays.asList(10));
         }
         return possibleDurations;
     }
 
     public void setPossibleDurations(java.util.List<Integer> possibleDurations) {
         if (possibleDurations == null || possibleDurations.isEmpty()) {
-            this.possibleDurations = new java.util.ArrayList<>(java.util.Arrays.asList(5));
+            this.possibleDurations = new java.util.ArrayList<>(java.util.Arrays.asList(10));
         } else {
             this.possibleDurations = possibleDurations;
         }
@@ -496,39 +507,39 @@ public class SavedRegion {
         this.blindnessSeconds = blindnessSeconds;
     }
 
-    public int getEntryCooldownMinutes() {
-        return entryCooldownMinutes;
+    public int getEntryCooldownSeconds() {
+        return entryCooldownSeconds;
     }
 
-    public void setEntryCooldownMinutes(int entryCooldownMinutes) {
-        this.entryCooldownMinutes = entryCooldownMinutes;
+    public void setEntryCooldownSeconds(int entryCooldownSeconds) {
+        this.entryCooldownSeconds = entryCooldownSeconds;
     }
 
-    public java.util.Map<java.util.UUID, Long> getPlayerEntryCooldowns() {
+    public java.util.Map<String, Long> getPlayerEntryCooldowns() {
         if (playerEntryCooldowns == null) {
             playerEntryCooldowns = new java.util.HashMap<>();
         }
         return playerEntryCooldowns;
     }
 
-    public void setPlayerEntryCooldown(java.util.UUID playerId) {
-        if (entryCooldownMinutes <= 0) return;
-        getPlayerEntryCooldowns().put(playerId, System.currentTimeMillis() + (entryCooldownMinutes * 60000L));
+    public void setPlayerEntryCooldown(String playerIdStr) {
+        if (entryCooldownSeconds <= 0) return;
+        getPlayerEntryCooldowns().put(playerIdStr, System.currentTimeMillis() + (entryCooldownSeconds * 1000L));
     }
 
-    public boolean isOnEntryCooldown(java.util.UUID playerId) {
-        Long expirationTime = getPlayerEntryCooldowns().get(playerId);
+    public boolean isOnEntryCooldown(String playerIdStr) {
+        Long expirationTime = getPlayerEntryCooldowns().get(playerIdStr);
         if (expirationTime == null) return false;
         
         if (System.currentTimeMillis() >= expirationTime) {
-            getPlayerEntryCooldowns().remove(playerId);
+            getPlayerEntryCooldowns().remove(playerIdStr);
             return false;
         }
         return true;
     }
 
-    public long getRemainingEntryCooldownTime(java.util.UUID playerId) {
-        Long expirationTime = getPlayerEntryCooldowns().get(playerId);
+    public long getRemainingEntryCooldownTime(String playerIdStr) {
+        Long expirationTime = getPlayerEntryCooldowns().get(playerIdStr);
         if (expirationTime == null) return 0;
         long remaining = expirationTime - System.currentTimeMillis();
         return remaining > 0 ? remaining : 0;

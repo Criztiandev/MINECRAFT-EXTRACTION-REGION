@@ -42,17 +42,21 @@ public class EntryTask implements Runnable {
                 if (isInsideEntryBounds(loc, region)) {
                     // Check if region is enabled
                     if (!region.isEntryEnabled()) {
-                        sendActionBar(player, "§cThis Drop Zone is currently under maintenance!");
-                        String cmd = region.getEntryFallbackCommand().replace("%player%", player.getName());
-                        Bukkit.dispatchCommand(Bukkit.getConsoleSender(), cmd);
-                        break;
+                        if (player.isOp()) {
+                            sendActionBar(player, "§c[Admin] Bypassing Maintenance Mode!");
+                        } else {
+                            sendActionBar(player, "§cThis Drop Zone is currently under maintenance!");
+                            String cmd = region.getEntryFallbackCommand().replace("%player%", player.getName());
+                            Bukkit.dispatchCommand(Bukkit.getConsoleSender(), cmd);
+                            break;
+                        }
                     }
                     
                     // Check if player is on cooldown
                     long now = System.currentTimeMillis();
-                    java.util.UUID uuid = player.getUniqueId();
-                    if (region.getPlayerEntryCooldowns().containsKey(uuid)) {
-                        long expire = region.getPlayerEntryCooldowns().get(uuid);
+                    String uuidStr = player.getUniqueId().toString();
+                    if (region.getPlayerEntryCooldowns().containsKey(uuidStr)) {
+                        long expire = region.getPlayerEntryCooldowns().get(uuidStr);
                         if (now < expire) {
                             long remainingSeconds = (expire - now) / 1000;
                             sendActionBar(player, "§cYou cannot enter the Drop Zone for another " + remainingSeconds + "s");
@@ -78,13 +82,14 @@ public class EntryTask implements Runnable {
                     boolean success = processEntrySequence(player, region);
                     if (success) {
                         // Start cooldown
-                        long cooldownMs = region.getEntryCooldownMinutes() * 60 * 1000L;
+                        long cooldownMs = region.getEntryCooldownSeconds() * 1000L;
                         if (cooldownMs > 0) {
-                            region.getPlayerEntryCooldowns().put(uuid, now + cooldownMs);
+                            region.getPlayerEntryCooldowns().put(uuidStr, now + cooldownMs);
+                            plugin.getRegionManager().saveRegion(region);
                         }
                         
                         // Add to Active Drop Zone tracking for Slow Falling removal
-                        plugin.getRegionManager().addActiveDropZonePlayer(uuid);
+                        plugin.getRegionManager().addActiveDropZonePlayer(player.getUniqueId());
                     }
                     
                     // Only process one entry region per tick to prevent chaining if overlapping
@@ -142,6 +147,20 @@ public class EntryTask implements Runnable {
 
         // Send Title so they feel immersed
         player.sendTitle("§c§lWARZONE", "§7Entering the Drop Zone...", 10, 40, 20);
+        
+        // Equip Leather Chestplate if completely naked in the chestplate slot
+        org.bukkit.inventory.ItemStack chestplate = player.getInventory().getChestplate();
+        if (chestplate == null || chestplate.getType() == org.bukkit.Material.AIR) {
+            org.bukkit.inventory.ItemStack leatherChest = new org.bukkit.inventory.ItemStack(org.bukkit.Material.LEATHER_CHESTPLATE);
+            org.bukkit.inventory.meta.ItemMeta meta = leatherChest.getItemMeta();
+            if (meta instanceof org.bukkit.inventory.meta.LeatherArmorMeta) {
+                ((org.bukkit.inventory.meta.LeatherArmorMeta) meta).setColor(org.bukkit.Color.BLACK);
+                leatherChest.setItemMeta(meta);
+            }
+            player.getInventory().setChestplate(leatherChest);
+            player.sendMessage("§eEquipped default Leather Jacket for the drop zone.");
+        }
+
         return true;
     }
 

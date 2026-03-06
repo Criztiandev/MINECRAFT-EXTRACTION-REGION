@@ -75,11 +75,12 @@ public class EntrySettingsGUI {
         if (cooldownMeta != null) {
             cooldownMeta.setDisplayName("§6§lEntry Cooldown");
             cooldownMeta.setLore(Arrays.asList(
-                "§7Current: §f" + region.getEntryCooldownMinutes() + " Minutes",
+                "§7Current: §f" + region.getEntryCooldownSeconds() + " Seconds",
                 "",
                 "§eLeft-Click: §fCycle presets",
                 "§cRight-Click: §fCycle presets",
-                "§dShift-Click: §fSet exact value in chat"
+                "§dShift-Click: §fSet exact value in chat",
+                "§8(e.g., '10s', '1m', '1h')"
             ));
             cooldownMeta.getPersistentDataContainer().set(new NamespacedKey(plugin, "entry-action"), PersistentDataType.STRING, "cooldown");
             cooldownMeta.getPersistentDataContainer().set(new NamespacedKey(plugin, "region-id"), PersistentDataType.STRING, region.getId());

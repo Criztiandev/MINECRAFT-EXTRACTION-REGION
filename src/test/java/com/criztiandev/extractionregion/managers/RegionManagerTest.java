@@ -180,9 +180,9 @@ public class RegionManagerTest {
             verify(inst1).setSpawnChance(15);
             verify(inst1).setFallbackParentName("FALLBACK_DEF");
 
-            // For inst2, it had no overrides so it should default appropriately based on MYTHIC status
-            verify(inst2).setStationary(true); 
-            assertEquals(true, testRegion.getChestStationaryOverrides().get("60,64,60"));
+            // For inst2, it had no overrides so it should default to false (shufflable) regardless of its tier
+            verify(inst2).setStationary(false); 
+            assertEquals(false, testRegion.getChestStationaryOverrides().get("60,64,60"));
         }
     }
 }

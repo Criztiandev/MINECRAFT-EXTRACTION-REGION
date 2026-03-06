@@ -235,6 +235,9 @@ public class RegionInventoryListener implements Listener {
                     if (region.getType() == com.criztiandev.extractionregion.models.RegionType.EXTRACTION) {
                         plugin.getExtractionTask().getSessions().values().removeIf(session -> session.getRegion().getId().equals(region.getId()));
                         plugin.getHologramManager().removeHologram(region.getId()); // Hologram loop will auto-revive it next tick
+                        region.setCooldownEndTime(0);
+                        region.setCurrentCapacity(-1);
+                        plugin.getRegionManager().saveRegion(region);
                     } else if (region.getType() == com.criztiandev.extractionregion.models.RegionType.CHEST_REPLENISH) {
                         int chestsWiped = 0;
                         if (plugin.getExtractionChestApi() != null) {
@@ -298,6 +301,42 @@ public class RegionInventoryListener implements Listener {
                     region.setBypassCooldown(!region.isBypassCooldown());
                     plugin.getRegionManager().saveRegion(region);
                     new com.criztiandev.extractionregion.gui.RegionActionGUI(plugin).openMenu(player, region);
+                } else if ("evict_players".equals(action)) {
+                    player.closeInventory();
+                    int evicted = 0;
+                    org.bukkit.World w = org.bukkit.Bukkit.getWorld(region.getWorld());
+                    if (w != null) {
+                        for (Player p : w.getPlayers()) {
+                            if (p.isOp() || p.hasPermission("extractionregion.admin")) continue;
+                            org.bukkit.Location loc = p.getLocation();
+                            if (loc.getBlockX() >= region.getMinX() && loc.getBlockX() <= region.getMaxX() &&
+                                loc.getBlockZ() >= region.getMinZ() && loc.getBlockZ() <= region.getMaxZ()) {
+                                
+                                // Evict them
+                                org.bukkit.Location spawn = plugin.getConfig().getLocation("extraction.spawn");
+                                if (spawn == null) {
+                                    String worldStr = plugin.getConfig().getString("extraction.spawn.world");
+                                    if (worldStr != null) {
+                                        org.bukkit.World spWorld = Bukkit.getWorld(worldStr);
+                                        if (spWorld != null) {
+                                            spawn = new org.bukkit.Location(spWorld, 
+                                                plugin.getConfig().getDouble("extraction.spawn.x"),
+                                                plugin.getConfig().getDouble("extraction.spawn.y"),
+                                                plugin.getConfig().getDouble("extraction.spawn.z"),
+                                                (float) plugin.getConfig().getDouble("extraction.spawn.yaw"),
+                                                (float) plugin.getConfig().getDouble("extraction.spawn.pitch")
+                                            );
+                                        }
+                                    }
+                                }
+                                if (spawn == null) spawn = w.getSpawnLocation();
+                                p.teleport(spawn);
+                                p.sendMessage("§cYou have been forcefully evicted from the region because it is in lockdown/maintenance mode.");
+                                evicted++;
+                            }
+                        }
+                    }
+                    player.sendMessage("§aSuccessfully evicted §e" + evicted + " §anon-OP players from §b" + region.getId());
                 }
             }
             return;
@@ -499,6 +538,30 @@ public class RegionInventoryListener implements Listener {
                         plugin.getRegionManager().addPromptState(player.getUniqueId(), "extrc_cool_cmd_" + regionId);
                         player.sendMessage("§a[ExtractionRegion] §ePlease type the exact cooldown command (e.g. 'spawn %player%') for §b" + regionId + "§e:");
                     }
+                } else if ("lockdown".equals(action)) {
+                    region.setLockedDown(!region.isLockedDown());
+                    plugin.getRegionManager().saveRegion(region);
+                    new com.criztiandev.extractionregion.gui.ExtractionSettingsGUI(plugin).openMenu(player, region);
+                } else if ("timer_extrc".equals(action)) {
+                    if (event.getClick().isShiftClick()) {
+                        player.closeInventory();
+                        plugin.getRegionManager().addPromptState(player.getUniqueId(), "region_interval_" + regionId);
+                        player.sendMessage("§ePlease type the custom timer interval in minutes in chat (or type 'cancel' to abort).");
+                        return;
+                    }
+                    
+                    int current = region.getResetIntervalMinutes();
+                    int next = 60; // 1h
+                    if (current == 60) next = 120; // 2h
+                    else if (current == 120) next = 360; // 6h
+                    else if (current == 360) next = 720; // 12h
+                    else if (current == 720) next = 1440; // 24h
+                    else if (current == 1440) next = 60;
+                    else next = 360;
+                    
+                    region.setResetIntervalMinutes(next);
+                    plugin.getRegionManager().saveRegion(region);
+                    new com.criztiandev.extractionregion.gui.ExtractionSettingsGUI(plugin).openMenu(player, region);
                 } else if ("holo_menu".equals(action)) {
                     new com.criztiandev.extractionregion.gui.HologramSettingsGUI(plugin).openMenu(player, region);
                 }
@@ -640,19 +703,19 @@ public class RegionInventoryListener implements Listener {
                         player.sendMessage("§aPlease type the exact entry cooldown (in minutes) for §e" + regionId + "§a:");
                         return;
                     }
-                    int c = region.getEntryCooldownMinutes();
+                    int c = region.getEntryCooldownSeconds();
                     if (event.getClick().isLeftClick()) {
-                        if (c == 0) region.setEntryCooldownMinutes(1);
-                        else if (c == 1) region.setEntryCooldownMinutes(5);
-                        else if (c == 5) region.setEntryCooldownMinutes(10);
-                        else if (c == 10) region.setEntryCooldownMinutes(30);
-                        else region.setEntryCooldownMinutes(0);
+                        if (c == 0) region.setEntryCooldownSeconds(10);
+                        else if (c == 10) region.setEntryCooldownSeconds(30);
+                        else if (c == 30) region.setEntryCooldownSeconds(60);
+                        else if (c == 60) region.setEntryCooldownSeconds(300);
+                        else region.setEntryCooldownSeconds(0);
                     } else if (event.getClick().isRightClick()) {
-                        if (c == 0) region.setEntryCooldownMinutes(30);
-                        else if (c == 1) region.setEntryCooldownMinutes(0);
-                        else if (c == 5) region.setEntryCooldownMinutes(1);
-                        else if (c == 10) region.setEntryCooldownMinutes(5);
-                        else region.setEntryCooldownMinutes(10);
+                        if (c == 0) region.setEntryCooldownSeconds(300);
+                        else if (c == 10) region.setEntryCooldownSeconds(0);
+                        else if (c == 30) region.setEntryCooldownSeconds(10);
+                        else if (c == 60) region.setEntryCooldownSeconds(30);
+                        else region.setEntryCooldownSeconds(60);
                     }
                     plugin.getRegionManager().saveRegion(region);
                     new com.criztiandev.extractionregion.gui.EntrySettingsGUI(plugin).openMenu(player, region);

@@ -311,6 +311,25 @@ public class RegionActionGUI {
             inv.setItem(15, manageChestsItem);
         }
         
+        // Slot 23: Evict Non-OPs
+        if (region.getType() == com.criztiandev.extractionregion.models.RegionType.EXTRACTION) {
+            ItemStack evictItem = new ItemStack(Material.ENDER_PEARL);
+            ItemMeta evictMeta = evictItem.getItemMeta();
+            if (evictMeta != null) {
+                evictMeta.setDisplayName("§5§lEvict Non-OPs");
+                evictMeta.setLore(Arrays.asList(
+                    "§7Instantly teleport all regular",
+                    "§7players inside this region",
+                    "§7to the server spawn fallback.",
+                    "§7(Used alongside Lockdown)"
+                ));
+                evictMeta.getPersistentDataContainer().set(new NamespacedKey(plugin, "region-action"), PersistentDataType.STRING, "evict_players");
+                evictMeta.getPersistentDataContainer().set(new NamespacedKey(plugin, "region-id"), PersistentDataType.STRING, region.getId());
+                evictItem.setItemMeta(evictMeta);
+            }
+            inv.setItem(23, evictItem);
+        }
+        
         // Slot 25: Bypass Cooldown Toggle
         if (region.getType() == com.criztiandev.extractionregion.models.RegionType.EXTRACTION) {
             ItemStack bypassItem = new ItemStack(region.isBypassCooldown() ? Material.LIME_DYE : Material.GRAY_DYE);
