@@ -331,26 +331,6 @@ public class RegionActionGUI {
                 bypassItem.setItemMeta(bypassMeta);
             }
             inv.setItem(25, bypassItem);
-        } else if (region.getType() == com.criztiandev.extractionregion.models.RegionType.CHEST_REPLENISH) {
-            ItemStack shuffleItem = new ItemStack(region.isShuffleChests() ? Material.LIME_DYE : Material.GRAY_DYE);
-            ItemMeta shuffleMeta = shuffleItem.getItemMeta();
-            if (shuffleMeta != null) {
-                shuffleMeta.setDisplayName("§e§lRandomize Locations on Refresh");
-                shuffleMeta.setLore(Arrays.asList(
-                    "§7If enabled, every time this",
-                    "§7region resets, all chests",
-                    "§7inside will randomly swap",
-                    "§7their locations and loot tables.",
-                    "",
-                    "§7Current: " + (region.isShuffleChests() ? "§aEnabled" : "§cDisabled"),
-                    "",
-                    "§eClick to toggle"
-                ));
-                shuffleMeta.getPersistentDataContainer().set(new NamespacedKey(plugin, "region-action"), PersistentDataType.STRING, "shuffle_chests");
-                shuffleMeta.getPersistentDataContainer().set(new NamespacedKey(plugin, "region-id"), PersistentDataType.STRING, region.getId());
-                shuffleItem.setItemMeta(shuffleMeta);
-            }
-            inv.setItem(24, shuffleItem);
         }
         
         ItemStack backItem = new ItemStack(Material.ARROW);

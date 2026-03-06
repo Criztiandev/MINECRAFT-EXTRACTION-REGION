@@ -74,11 +74,11 @@ public class RegionChestsCategoryGUI {
                 meta.setLore(Arrays.asList(
                     "§7Type: §f" + inst.getParentName(),
                     "§7World: §f" + inst.getWorld(),
-                    "§7Stationary Toggle: " + (inst.isStationary() ? "§aYes" : "§cNo"),
+                    "§7Include in Shuffle?: " + (inst.isStationary() ? "§cNo (Locked)" : "§aYes (Dynamic)"),
                     "§7Spawn Chance: §e" + inst.getSpawnChance() + "%",
                     "",
                     "§eLeft-Click §7to open Config",
-                    "§eShift-Click §7to teleport to chest"
+                "§eShift-Left-Click §7to teleport to chest"
                 ));
                 meta.getPersistentDataContainer().set(new NamespacedKey(plugin, "chest-parent"), PersistentDataType.STRING, inst.getParentName());
                 meta.getPersistentDataContainer().set(new NamespacedKey(plugin, "chest-id"), PersistentDataType.STRING, inst.getId());
@@ -110,9 +110,7 @@ public class RegionChestsCategoryGUI {
                 "§7Apply settings to ALL §f" + tier.name() + " §7chests",
                 "§7in this region at once.",
                 "",
-                "§eLeft-Click §7to set spawn chance for all",
-                "§eRight-Click §7to toggle stationary for all",
-                "§eShift-Right-Click §7to set fallback for all"
+                "§eClick to open Bulk Configuration options"
             ));
             bulkMeta.getPersistentDataContainer().set(new NamespacedKey(plugin, "region-category-action"), PersistentDataType.STRING, "bulk_configure_tier");
             bulkMeta.getPersistentDataContainer().set(new NamespacedKey(plugin, "region-id"), PersistentDataType.STRING, region.getId());

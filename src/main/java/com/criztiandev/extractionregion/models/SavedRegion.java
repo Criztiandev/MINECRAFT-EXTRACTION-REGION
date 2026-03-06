@@ -601,5 +601,26 @@ public class SavedRegion {
     public void setRequiredArmorTier(String requiredArmorTier) {
         this.requiredArmorTier = requiredArmorTier;
     }
-}
 
+    // --- CHEST PERSISTENCE SETTINGS ---
+    // These maps store configurator overrides using "X,Y,Z" as the key
+    // so they survive CyberWorld regenerating and wiping the chest UUIDs.
+    private java.util.Map<String, Boolean> chestStationaryOverrides = new java.util.HashMap<>();
+    private java.util.Map<String, Integer> chestChanceOverrides = new java.util.HashMap<>();
+    private java.util.Map<String, String> chestFallbackOverrides = new java.util.HashMap<>();
+    
+    public java.util.Map<String, Boolean> getChestStationaryOverrides() {
+        if (chestStationaryOverrides == null) chestStationaryOverrides = new java.util.HashMap<>();
+        return chestStationaryOverrides;
+    }
+    
+    public java.util.Map<String, Integer> getChestChanceOverrides() {
+        if (chestChanceOverrides == null) chestChanceOverrides = new java.util.HashMap<>();
+        return chestChanceOverrides;
+    }
+    
+    public java.util.Map<String, String> getChestFallbackOverrides() {
+        if (chestFallbackOverrides == null) chestFallbackOverrides = new java.util.HashMap<>();
+        return chestFallbackOverrides;
+    }
+}

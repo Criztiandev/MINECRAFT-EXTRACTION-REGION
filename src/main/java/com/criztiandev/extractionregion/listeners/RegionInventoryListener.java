@@ -39,6 +39,7 @@ public class RegionInventoryListener implements Listener {
                               title.startsWith(com.criztiandev.extractionregion.gui.ExtractionSettingsGUI.TITLE) ||
                               title.startsWith(com.criztiandev.extractionregion.gui.EntrySettingsGUI.TITLE) ||
                               title.startsWith(com.criztiandev.extractionregion.gui.RegionSubMenuGUI.TITLE_PREFIX) ||
+                              title.startsWith(com.criztiandev.extractionregion.gui.RegionChestsBulkGUI.TITLE) ||
                               title.startsWith(com.criztiandev.extractionregion.gui.RegionChestsGUI.TITLE) ||
                               title.startsWith(com.criztiandev.extractionregion.gui.HologramSettingsGUI.TITLE) ||
                               title.equals(com.criztiandev.extractionregion.gui.WandMenuGUI.TITLE) ||
@@ -295,10 +296,6 @@ public class RegionInventoryListener implements Listener {
                     player.sendMessage("§7(Type 'cancel' in chat or switch items to abort)");
                 } else if ("bypass".equals(action)) {
                     region.setBypassCooldown(!region.isBypassCooldown());
-                    plugin.getRegionManager().saveRegion(region);
-                    new com.criztiandev.extractionregion.gui.RegionActionGUI(plugin).openMenu(player, region);
-                } else if ("shuffle_chests".equals(action)) {
-                    region.setShuffleChests(!region.isShuffleChests());
                     plugin.getRegionManager().saveRegion(region);
                     new com.criztiandev.extractionregion.gui.RegionActionGUI(plugin).openMenu(player, region);
                 }
@@ -719,8 +716,8 @@ public class RegionInventoryListener implements Listener {
                     String chestTierName = data.get(new NamespacedKey(plugin, "chest-tier"), PersistentDataType.STRING);
                     if (instanceId == null) return;
 
-                    if (event.getClick().isShiftClick()) {
-                        // Shift-Click = teleport to chest
+                    if (event.getClick().isShiftClick() && event.getClick().isLeftClick()) {
+                        // Shift-Left-Click = teleport to chest
                         com.criztiandev.extractionchest.models.ChestInstance inst = plugin.getExtractionChestApi().getChestInstanceManager().getInstanceById(instanceId);
                         if (inst != null) {
                             org.bukkit.World w = org.bukkit.Bukkit.getWorld(inst.getWorld());
@@ -730,44 +727,69 @@ public class RegionInventoryListener implements Listener {
                                 player.sendMessage("§aTeleported to the chest.");
                             }
                         }
-                    } else if (event.getClick().isLeftClick()) {
+                    } else if (event.getClick().isLeftClick() && !event.getClick().isShiftClick()) {
                         // Left-Click = open individual chest config
                         new com.criztiandev.extractionregion.gui.ChestConfigGUI(plugin).openMenu(player, region, instanceId, chestTierName);
                     }
                 } else if ("bulk_configure_tier".equals(action)) {
                     String bulkTierName = data.get(new NamespacedKey(plugin, "chest-tier"), PersistentDataType.STRING);
                     if (bulkTierName == null) return;
-
-                    if (event.getClick().isShiftClick() && event.getClick().isRightClick()) {
-                        player.closeInventory();
-                        plugin.getRegionManager().addPromptState(player.getUniqueId(), "bulk_fallback_" + regionId + "_" + bulkTierName);
-                        player.sendMessage("§b[Bulk Configure] §ePlease type the exact Loot Table to use as a fallback (or 'none' to remove fallback) to apply to ALL §b" + bulkTierName + " §echests in §b" + regionId + "§e:");
-                    } else if (event.getClick().isLeftClick()) {
-                        player.closeInventory();
-                        plugin.getRegionManager().addPromptState(player.getUniqueId(), "bulk_chance_" + regionId + "_" + bulkTierName);
-                        player.sendMessage("§b[Bulk Configure] §ePlease type the spawn chance (1-100) to apply to ALL §b" + bulkTierName + " §echests in §b" + regionId + "§e:");
-                    } else if (event.getClick().isRightClick()) {
-                        try {
-                            com.criztiandev.extractionchest.models.ChestTier bulkTier = com.criztiandev.extractionchest.models.ChestTier.valueOf(bulkTierName);
-                            int toggled = 0;
-                            for (com.criztiandev.extractionchest.models.ChestInstance inst : plugin.getExtractionChestApi().getChestInstanceManager().getAllInstances()) {
-                                if (!inst.getWorld().equals(region.getWorld())) continue;
-                                org.bukkit.Location loc = inst.getLocation(org.bukkit.Bukkit.getWorld(inst.getWorld()));
-                                if (loc.getBlockX() < region.getMinX() || loc.getBlockX() > region.getMaxX()) continue;
-                                if (loc.getBlockZ() < region.getMinZ() || loc.getBlockZ() > region.getMaxZ()) continue;
-                                com.criztiandev.extractionchest.models.ParentChestDefinition def = plugin.getExtractionChestApi().getLootTableManager().getDefinition(inst.getParentName());
-                                if (def == null || def.getTier() != bulkTier) continue;
-                                inst.setStationary(!inst.isStationary());
-                                plugin.getExtractionChestApi().getStorageProvider().saveInstance(inst);
-                                toggled++;
-                            }
-                            player.sendMessage("§b[Bulk Configure] §aToggled stationary mode for §e" + toggled + " §a" + bulkTierName + " chests.");
-                            new com.criztiandev.extractionregion.gui.RegionChestsCategoryGUI(plugin).openMenu(player, region, bulkTier, 0);
-                        } catch (IllegalArgumentException ignored) {}
-                    }
+                    try {
+                        com.criztiandev.extractionchest.models.ChestTier bulkTier = com.criztiandev.extractionchest.models.ChestTier.valueOf(bulkTierName);
+                        new com.criztiandev.extractionregion.gui.RegionChestsBulkGUI(plugin).openMenu(player, region, bulkTier);
+                    } catch (IllegalArgumentException ignored) {}
                 }
             }
-            return;
+        }
+
+        // Handle Region Chests Bulk GUI
+        if (title.startsWith(com.criztiandev.extractionregion.gui.RegionChestsBulkGUI.TITLE)) {
+            if (data.has(new NamespacedKey(plugin, "bulk-action"), PersistentDataType.STRING)) {
+                String action = data.get(new NamespacedKey(plugin, "bulk-action"), PersistentDataType.STRING);
+                String regionId = data.get(new NamespacedKey(plugin, "region-id"), PersistentDataType.STRING);
+                if (regionId == null) return;
+                SavedRegion region = plugin.getRegionManager().getRegion(regionId);
+                if (region == null) return;
+
+                String bulkTierName = data.get(new NamespacedKey(plugin, "chest-tier"), PersistentDataType.STRING);
+                if (bulkTierName == null) return;
+                com.criztiandev.extractionchest.models.ChestTier bulkTier;
+                try {
+                    bulkTier = com.criztiandev.extractionchest.models.ChestTier.valueOf(bulkTierName);
+                } catch (IllegalArgumentException e) {
+                    return;
+                }
+
+                if ("back".equals(action)) {
+                    new com.criztiandev.extractionregion.gui.RegionChestsCategoryGUI(plugin).openMenu(player, region, bulkTier, 0);
+                } else if ("toggle_lock".equals(action)) {
+                    int toggled = 0;
+                    for (com.criztiandev.extractionchest.models.ChestInstance inst : plugin.getExtractionChestApi().getChestInstanceManager().getAllInstances()) {
+                        if (!inst.getWorld().equals(region.getWorld())) continue;
+                        org.bukkit.Location loc = inst.getLocation(org.bukkit.Bukkit.getWorld(inst.getWorld()));
+                        if (loc.getBlockX() < region.getMinX() || loc.getBlockX() > region.getMaxX()) continue;
+                        if (loc.getBlockZ() < region.getMinZ() || loc.getBlockZ() > region.getMaxZ()) continue;
+                        com.criztiandev.extractionchest.models.ParentChestDefinition def = plugin.getExtractionChestApi().getLootTableManager().getDefinition(inst.getParentName());
+                        if (def == null || def.getTier() != bulkTier) continue;
+                        inst.setStationary(!inst.isStationary());
+                        region.getChestStationaryOverrides().put(loc.getBlockX() + "," + loc.getBlockY() + "," + loc.getBlockZ(), inst.isStationary());
+                        plugin.getExtractionChestApi().getStorageProvider().saveInstance(inst);
+                        toggled++;
+                    }
+                    plugin.getRegionManager().saveRegion(region);
+                    player.sendMessage("§b[Bulk Configure] §aToggled Shuffling Lock for §e" + toggled + " §a" + bulkTierName + " chests.");
+                    player.playSound(player.getLocation(), org.bukkit.Sound.BLOCK_NOTE_BLOCK_PLING, 1.0f, 1.0f);
+                    new com.criztiandev.extractionregion.gui.RegionChestsCategoryGUI(plugin).openMenu(player, region, bulkTier, 0);
+                } else if ("set_chance".equals(action)) {
+                    player.closeInventory();
+                    plugin.getRegionManager().addPromptState(player.getUniqueId(), "bulk_chance_" + regionId + "_" + bulkTierName);
+                    player.sendMessage("§b[Bulk Configure] §ePlease type the spawn chance (1-100) to apply to ALL §b" + bulkTierName + " §echests in §b" + regionId + "§e:");
+                } else if ("set_fallback".equals(action)) {
+                    player.closeInventory();
+                    plugin.getRegionManager().addPromptState(player.getUniqueId(), "bulk_fallback_" + regionId + "_" + bulkTierName);
+                    player.sendMessage("§b[Bulk Configure] §ePlease type the exact Loot Table to use as a fallback (or 'none' to remove fallback) to apply to ALL §b" + bulkTierName + " §echests in §b" + regionId + "§e:");
+                }
+            }
         }
 
         // Handle Region Chests overview (tier selector)
@@ -791,7 +813,6 @@ public class RegionInventoryListener implements Listener {
                     }
                 }
             }
-            return;
         }
 
         // Handle Chest Config GUI
@@ -819,6 +840,12 @@ public class RegionInventoryListener implements Listener {
                     }
                 } else if ("toggle_stationary".equals(action)) {
                     inst.setStationary(!inst.isStationary());
+                    org.bukkit.World w = org.bukkit.Bukkit.getWorld(inst.getWorld());
+                    if (w != null) {
+                        org.bukkit.Location loc = inst.getLocation(w);
+                        region.getChestStationaryOverrides().put(loc.getBlockX() + "," + loc.getBlockY() + "," + loc.getBlockZ(), inst.isStationary());
+                        plugin.getRegionManager().saveRegion(region);
+                    }
                     plugin.getExtractionChestApi().getStorageProvider().saveInstance(inst);
                     player.playSound(player.getLocation(), org.bukkit.Sound.BLOCK_NOTE_BLOCK_PLING, 1.0f, 1.0f);
                     new com.criztiandev.extractionregion.gui.ChestConfigGUI(plugin).openMenu(player, region, chestId);

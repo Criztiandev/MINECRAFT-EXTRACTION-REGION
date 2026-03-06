@@ -124,6 +124,8 @@ public class RegionChatPromptListener implements Listener {
                                 return;
                             }
                             cInst.setSpawnChance(chance);
+                            cRegion.getChestChanceOverrides().put(cInst.getX() + "," + cInst.getY() + "," + cInst.getZ(), chance);
+                            plugin.getRegionManager().saveRegion(cRegion);
                             player.sendMessage("§aSpawn chance set to " + chance + "%.");
                         } catch (NumberFormatException e) {
                             player.sendMessage("§cInvalid number. Please enter a valid percentage (1-100).");
@@ -132,6 +134,7 @@ public class RegionChatPromptListener implements Listener {
                     } else if (state.startsWith("chest_fallback_")) {
                         if (input.equalsIgnoreCase("none")) {
                             cInst.setFallbackParentName(null);
+                            cRegion.getChestFallbackOverrides().remove(cInst.getX() + "," + cInst.getY() + "," + cInst.getZ());
                             player.sendMessage("§aFallback tier removed. Chest will physically despawn if the chance roll fails.");
                         } else {
                             com.criztiandev.extractionchest.models.ParentChestDefinition def = plugin.getExtractionChestApi().getLootTableManager().getDefinition(input);
@@ -139,8 +142,10 @@ public class RegionChatPromptListener implements Listener {
                                 player.sendMessage("§cWarning: The loot table '" + input + "' doesn't seem to exist. It will be saved anyway, but you should create it soon!");
                             }
                             cInst.setFallbackParentName(input);
+                            cRegion.getChestFallbackOverrides().put(cInst.getX() + "," + cInst.getY() + "," + cInst.getZ(), input);
                             player.sendMessage("§aFallback tier set to " + input + ".");
                         }
+                        plugin.getRegionManager().saveRegion(cRegion);
                     }
 
                     plugin.getExtractionChestApi().getStorageProvider().saveInstance(cInst);
@@ -196,12 +201,19 @@ public class RegionChatPromptListener implements Listener {
                             
                             if (isChance) {
                                 bi.setSpawnChance(chance);
+                                bRegion.getChestChanceOverrides().put(bLoc.getBlockX() + "," + bLoc.getBlockY() + "," + bLoc.getBlockZ(), chance);
                             } else {
                                 bi.setFallbackParentName(fallback);
+                                if (fallback == null) {
+                                    bRegion.getChestFallbackOverrides().remove(bLoc.getBlockX() + "," + bLoc.getBlockY() + "," + bLoc.getBlockZ());
+                                } else {
+                                    bRegion.getChestFallbackOverrides().put(bLoc.getBlockX() + "," + bLoc.getBlockY() + "," + bLoc.getBlockZ(), fallback);
+                                }
                             }
                             plugin.getExtractionChestApi().getStorageProvider().saveInstance(bi);
                             updated++;
                         }
+                        plugin.getRegionManager().saveRegion(bRegion);
                         final com.criztiandev.extractionchest.models.ChestTier finalTier = bulkTier;
                         final com.criztiandev.extractionregion.models.SavedRegion fRegion = bRegion;
                         if (isChance) {

@@ -149,57 +149,95 @@ public class RegionManager {
 
         if (chestsToReplenish.isEmpty()) return 0;
 
-        if (region.isShuffleChests()) {
-            // Step 1: Collect non-stationary chests and shuffle their parentName assignments
-            java.util.List<com.criztiandev.extractionchest.models.ChestInstance> shuffleable = new java.util.ArrayList<>();
-            java.util.List<String> parentNames = new java.util.ArrayList<>();
+        // --- STEP 1: APPLY PERSISTED OVERRIDES & CLEANUP ---
+        
+        for (com.criztiandev.extractionchest.models.ChestInstance inst : chestsToReplenish) {
+            plugin.getExtractionChestApi().getHologramManager().deleteHologram(inst);
+            inst.setState(com.criztiandev.extractionchest.models.ChestState.EMPTY);
 
-            for (com.criztiandev.extractionchest.models.ChestInstance inst : chestsToReplenish) {
-                if (!inst.isStationary()) {
-                    shuffleable.add(inst);
-                    parentNames.add(inst.getBaseParentName()); // use base (the persistent name)
-                }
+            String coordKey = inst.getX() + "," + inst.getY() + "," + inst.getZ();
+
+            // 1. Stationary Status
+            if (region.getChestStationaryOverrides().containsKey(coordKey)) {
+                inst.setStationary(region.getChestStationaryOverrides().get(coordKey));
+            } else {
+                // User requested: "make all the chest to be shufflable except the legend and mythic"
+                String baseType = inst.getBaseParentName();
+                boolean isMythicOrLegendary = baseType != null && (baseType.equalsIgnoreCase("LEGEND") || baseType.equalsIgnoreCase("LEGENDARY") || baseType.equalsIgnoreCase("MYTHIC"));
+                inst.setStationary(isMythicOrLegendary);
+                // Save it so we remember default state
+                region.getChestStationaryOverrides().put(coordKey, isMythicOrLegendary);
             }
 
-            java.util.Collections.shuffle(parentNames);
-            for (int i = 0; i < shuffleable.size(); i++) {
-                instanceToParent.put(shuffleable.get(i).getId(), parentNames.get(i));
+            // 2. Spawn Chance
+            if (region.getChestChanceOverrides().containsKey(coordKey)) {
+                inst.setSpawnChance(region.getChestChanceOverrides().get(coordKey));
+            }
+
+            // 3. Fallback Tier
+            if (region.getChestFallbackOverrides().containsKey(coordKey)) {
+                inst.setFallbackParentName(region.getChestFallbackOverrides().get(coordKey));
             }
         }
+        
+        this.saveRegion(region);
 
-        // Step 2: Apply spawn-chance / fallback rolling on ALL chests
+        // --- STEP 2: SHUFFLE & FILTER ---
+        java.util.List<com.criztiandev.extractionchest.models.ChestInstance> shuffleable = new java.util.ArrayList<>();
+        java.util.List<String> parentNames = new java.util.ArrayList<>();
+
         for (com.criztiandev.extractionchest.models.ChestInstance inst : chestsToReplenish) {
-            String assignedParent;
-            if (inst.isStationary() || !region.isShuffleChests()) {
-                assignedParent = inst.getBaseParentName();
-            } else {
-                assignedParent = instanceToParent.getOrDefault(inst.getId(), inst.getBaseParentName());
+            String baseType = inst.getBaseParentName();
+            boolean isMythicOrLegendary = baseType != null && (baseType.equalsIgnoreCase("LEGEND") || baseType.equalsIgnoreCase("LEGENDARY") || baseType.equalsIgnoreCase("MYTHIC"));
+            
+            if (inst.isStationary() || isMythicOrLegendary) {
+                continue; 
             }
+            
+            shuffleable.add(inst);
+            parentNames.add(baseType);
+        }
+
+        // Randomize the blueprints
+        java.util.Collections.shuffle(parentNames);
+        
+        // Permanently write the new shuffled blueprints to the chests
+        for (int i = 0; i < shuffleable.size(); i++) {
+            com.criztiandev.extractionchest.models.ChestInstance target = shuffleable.get(i);
+            String newType = parentNames.get(i);
+            target.setBaseParentName(newType);
+        }
+
+        // --- STEP 3: SPAWN CHANCES & FALLBACKS ---
+        for (com.criztiandev.extractionchest.models.ChestInstance inst : chestsToReplenish) {
+            String activeParent = inst.getBaseParentName();
 
             int rng = java.util.concurrent.ThreadLocalRandom.current().nextInt(100) + 1;
-
-            if (rng > inst.getSpawnChance()) {
+            boolean failedSpawn = rng > inst.getSpawnChance();
+            
+            if (failedSpawn) {
                 String fallback = inst.getFallbackParentName();
                 if (fallback == null || fallback.isEmpty()) {
                     skipInstances.add(inst.getId());
-                    inst.setState(com.criztiandev.extractionchest.models.ChestState.EMPTY);
-                    plugin.getExtractionChestApi().getHologramManager().deleteHologram(inst);
                     org.bukkit.World w = org.bukkit.Bukkit.getWorld(inst.getWorld());
                     if (w != null) w.getBlockAt(inst.getX(), inst.getY(), inst.getZ()).setType(org.bukkit.Material.AIR);
                     continue;
                 } else {
-                    assignedParent = fallback;
+                    activeParent = fallback;
                 }
             }
 
-            instanceToParent.put(inst.getId(), assignedParent);
-            inst.setState(com.criztiandev.extractionchest.models.ChestState.EMPTY);
-            plugin.getExtractionChestApi().getHologramManager().deleteHologram(inst);
+            if (activeParent != null && !activeParent.equals(inst.getBaseParentName())) {
+                inst.setActiveParentName(activeParent);
+            } else {
+                inst.setActiveParentName(null);
+            }
         }
 
+        // --- STEP 4: BATCH RESPAWN ---
         new org.bukkit.scheduler.BukkitRunnable() {
             int index = 0;
-            final int BATCH_SIZE = plugin.getConfig().getInt("region.replenish-batch-size", 5);
+            final int BATCH_SIZE = Math.max(1, plugin.getConfig().getInt("region.replenish-batch-size", 5));
 
             @Override
             public void run() {
@@ -208,26 +246,20 @@ public class RegionManager {
 
                     if (skipInstances.contains(inst.getId())) continue;
 
-                    String shuffledParent = instanceToParent.getOrDefault(inst.getId(), inst.getBaseParentName());
-                    String originalBase = originalBaseNames.getOrDefault(inst.getId(), inst.getBaseParentName()); // Re-added this line
-                    inst.setBaseParentName(shuffledParent); // Moved this line up
-
                     plugin.getExtractionChestApi().getChestInstanceManager().changeState(inst, com.criztiandev.extractionchest.models.ChestState.RESPAWNING);
-
                     plugin.getExtractionChestApi().getChestInstanceManager().addInstance(inst);
                         
-                    // Fix for TPS Lag: Save async
                     java.util.concurrent.CompletableFuture.runAsync(() -> {
                         plugin.getExtractionChestApi().getStorageProvider().saveInstance(inst);
                     });
-
-                    inst.setBaseParentName(originalBase); // Re-added this line
                 }
                 if (index >= chestsToReplenish.size()) {
+                    plugin.getLogger().info("[RegionEditor-DEBUG] Batch respawn fully completed.");
                     this.cancel();
                 }
             }
         }.runTaskTimer(plugin, 1L, 1L);
+
         return chestsToReplenish.size();
     }
 
