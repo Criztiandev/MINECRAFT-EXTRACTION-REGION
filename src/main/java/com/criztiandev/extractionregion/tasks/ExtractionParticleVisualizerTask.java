@@ -59,71 +59,53 @@ public class ExtractionParticleVisualizerTask extends BukkitRunnable {
                 int minZ = region.getMinZ();
                 int maxZ = region.getMaxZ();
 
-                // Safety check: skip massive regions to prevent lag
-                if (maxX - minX > 200 || maxZ - minZ > 200) continue;
+                if (maxX - minX > 200 || maxZ - minZ > 200) {
+                    continue;
+                }
 
-                // Optimization: only process chunks/blocks if player is reasonably close to the region box
-                // Check distance from player to the closest point on the region bounding box
+                int floorY = region.getMinY();
                 int closestX = Math.max(minX, Math.min(pLoc.getBlockX(), maxX));
                 int closestZ = Math.max(minZ, Math.min(pLoc.getBlockZ(), maxZ));
-                
-                // If player is further than 45 blocks from the nearest edge, don't show the outline to them
+
                 if (Math.abs(pLoc.getBlockX() - closestX) > 45 || Math.abs(pLoc.getBlockZ() - closestZ) > 45) {
                     continue;
                 }
 
                 int pBlockX = pLoc.getBlockX();
                 int pBlockZ = pLoc.getBlockZ();
-                int viewRadius = 40; // Only render edges within 40 blocks of the player
-                
-                int startX = Math.max(minX, pBlockX - viewRadius);
-                int endX = Math.min(maxX, pBlockX + viewRadius);
-                int startZ = Math.max(minZ, pBlockZ - viewRadius);
-                int endZ = Math.min(maxZ, pBlockZ + viewRadius);
+                int viewRadius = 40;
 
-                // X edges (minZ and maxZ)
+                int startX = Math.max(minX, pBlockX - viewRadius);
+                int endX   = Math.min(maxX, pBlockX + viewRadius);
+                int startZ = Math.max(minZ, pBlockZ - viewRadius);
+                int endZ   = Math.min(maxZ, pBlockZ + viewRadius);
+
                 for (int x = startX; x <= endX; x++) {
                     if (Math.abs(minZ - pBlockZ) <= viewRadius) {
-                        if (world.isChunkLoaded(x >> 4, minZ >> 4)) {
-                            int y1 = world.getHighestBlockYAt(x, minZ);
-                            newFakeBlocks.add(new Location(world, x, y1, minZ));
-                        }
+                        newFakeBlocks.add(new Location(world, x, floorY, minZ));
                     }
                     if (Math.abs(maxZ - pBlockZ) <= viewRadius) {
-                        if (world.isChunkLoaded(x >> 4, maxZ >> 4)) {
-                            int y2 = world.getHighestBlockYAt(x, maxZ);
-                            newFakeBlocks.add(new Location(world, x, y2, maxZ));
-                        }
+                        newFakeBlocks.add(new Location(world, x, floorY, maxZ));
                     }
                 }
-                
-                // Z edges (minX and maxX, skip corners)
+
                 for (int z = Math.max(minZ + 1, startZ); z < Math.min(maxZ, endZ + 1); z++) {
                     if (Math.abs(minX - pBlockX) <= viewRadius) {
-                        if (world.isChunkLoaded(minX >> 4, z >> 4)) {
-                            int y1 = world.getHighestBlockYAt(minX, z);
-                            newFakeBlocks.add(new Location(world, minX, y1, z));
-                        }
+                        newFakeBlocks.add(new Location(world, minX, floorY, z));
                     }
                     if (Math.abs(maxX - pBlockX) <= viewRadius) {
-                        if (world.isChunkLoaded(maxX >> 4, z >> 4)) {
-                            int y2 = world.getHighestBlockYAt(maxX, z);
-                            newFakeBlocks.add(new Location(world, maxX, y2, z));
-                        }
+                        newFakeBlocks.add(new Location(world, maxX, floorY, z));
                     }
                 }
                 
-                // Also spawn a prominent marker exactly at the conduit location if it exists
                 if (region.getConduitLocation() != null) {
                     Location cLoc = region.getConduitLocation();
                     if (cLoc.distanceSquared(pLoc) < 2500 && world.isChunkLoaded(cLoc.getBlockX() >> 4, cLoc.getBlockZ() >> 4)) {
-                        // Spawn a subtle beacon-like ring or floating spark above the conduit block
                         player.spawnParticle(Particle.END_ROD, cLoc.clone().add(0.5, 0.5, 0.5), 1, 0.3, 0.3, 0.3, 0.01);
                     }
                 }
             }
 
-            // Remove blocks that the player can no longer see
             for (Location loc : currentFakeBlocks) {
                 if (!newFakeBlocks.contains(loc) && loc.getWorld().equals(player.getWorld())) {
                     boolean isWandBlock = false;

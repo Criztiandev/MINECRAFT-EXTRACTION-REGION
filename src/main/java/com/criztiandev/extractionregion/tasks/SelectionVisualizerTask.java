@@ -93,28 +93,22 @@ public class SelectionVisualizerTask extends BukkitRunnable {
                             int maxX = targetRegion.getMaxX();
                             int minZ = targetRegion.getMinZ();
                             int maxZ = targetRegion.getMaxZ();
-                            
+                            int floorY = targetRegion.getMinY();
+
                             if (maxX - minX < 200 && maxZ - minZ < 200) {
-                                // Only build cache if corners are loaded to prevent main-thread disk I/O lag
                                 boolean canCache = true;
                                 if (!world.isChunkLoaded(minX >> 4, minZ >> 4)) canCache = false;
                                 if (!world.isChunkLoaded(maxX >> 4, maxZ >> 4)) canCache = false;
-                                
+
                                 if (canCache) {
                                     Set<Location> perimeter = new HashSet<>();
                                     for (int x = minX; x <= maxX; x++) {
-                                        int y1 = world.getHighestBlockYAt(x, minZ);
-                                        perimeter.add(new Location(world, x, y1, minZ));
-                                        
-                                        int y2 = world.getHighestBlockYAt(x, maxZ);
-                                        perimeter.add(new Location(world, x, y2, maxZ));
+                                        perimeter.add(new Location(world, x, floorY, minZ));
+                                        perimeter.add(new Location(world, x, floorY, maxZ));
                                     }
                                     for (int z = minZ + 1; z < maxZ; z++) {
-                                        int y1 = world.getHighestBlockYAt(minX, z);
-                                        perimeter.add(new Location(world, minX, y1, z));
-                                        
-                                        int y2 = world.getHighestBlockYAt(maxX, z);
-                                        perimeter.add(new Location(world, maxX, y2, z));
+                                        perimeter.add(new Location(world, minX, floorY, z));
+                                        perimeter.add(new Location(world, maxX, floorY, z));
                                     }
                                     cachedPerimeters.put(regionId, perimeter);
                                     newVisuals.addAll(perimeter);
@@ -124,20 +118,13 @@ public class SelectionVisualizerTask extends BukkitRunnable {
                     }
                 } else if (selection.getPos1() != null && selection.getPos2() == null) {
                     world = selection.getPos1().getWorld();
-                    int x = selection.getPos1().getBlockX();
-                    int z = selection.getPos1().getBlockZ();
-                    if (world.isChunkLoaded(x >> 4, z >> 4)) {
-                        int y = world.getHighestBlockYAt(x, z);
-                        newVisuals.add(new Location(world, x, y, z));
-                    }
+                    Location pos1 = selection.getPos1();
+                    // Use the exact Y the player clicked — getHighestBlockYAt returns canopy/tree tops.
+                    newVisuals.add(new Location(world, pos1.getBlockX(), pos1.getBlockY(), pos1.getBlockZ()));
                 } else if (selection.getPos1() == null && selection.getPos2() != null) {
                     world = selection.getPos2().getWorld();
-                    int x = selection.getPos2().getBlockX();
-                    int z = selection.getPos2().getBlockZ();
-                    if (world.isChunkLoaded(x >> 4, z >> 4)) {
-                        int y = world.getHighestBlockYAt(x, z);
-                        newVisuals.add(new Location(world, x, y, z));
-                    }
+                    Location pos2 = selection.getPos2();
+                    newVisuals.add(new Location(world, pos2.getBlockX(), pos2.getBlockY(), pos2.getBlockZ()));
                 } else if (selection.getPos1() != null && selection.getPos2() != null) {
                     if (selection.getPos1().getWorld().equals(selection.getPos2().getWorld())) {
                         world = selection.getPos1().getWorld();
@@ -145,23 +132,18 @@ public class SelectionVisualizerTask extends BukkitRunnable {
                         int maxX = selection.getMaxX();
                         int minZ = selection.getMinZ();
                         int maxZ = selection.getMaxZ();
-                        
+                        // Use the lower of the two clicked Y positions as the outline floor.
+                        // getHighestBlockYAt places wool on leaf canopies above the selection.
+                        int floorY = Math.min(selection.getPos1().getBlockY(), selection.getPos2().getBlockY());
+
                         if (maxX - minX < 200 && maxZ - minZ < 200) {
-                            if (world.isChunkLoaded(minX >> 4, minZ >> 4) && world.isChunkLoaded(maxX >> 4, maxZ >> 4)) {
-                                for (int x = minX; x <= maxX; x++) {
-                                    int y1 = world.getHighestBlockYAt(x, minZ);
-                                    newVisuals.add(new Location(world, x, y1, minZ));
-                                    
-                                    int y2 = world.getHighestBlockYAt(x, maxZ);
-                                    newVisuals.add(new Location(world, x, y2, maxZ));
-                                }
-                                for (int z = minZ + 1; z < maxZ; z++) {
-                                    int y1 = world.getHighestBlockYAt(minX, z);
-                                    newVisuals.add(new Location(world, minX, y1, z));
-                                    
-                                    int y2 = world.getHighestBlockYAt(maxX, z);
-                                    newVisuals.add(new Location(world, maxX, y2, z));
-                                }
+                            for (int x = minX; x <= maxX; x++) {
+                                newVisuals.add(new Location(world, x, floorY, minZ));
+                                newVisuals.add(new Location(world, x, floorY, maxZ));
+                            }
+                            for (int z = minZ + 1; z < maxZ; z++) {
+                                newVisuals.add(new Location(world, minX, floorY, z));
+                                newVisuals.add(new Location(world, maxX, floorY, z));
                             }
                         }
                     }
