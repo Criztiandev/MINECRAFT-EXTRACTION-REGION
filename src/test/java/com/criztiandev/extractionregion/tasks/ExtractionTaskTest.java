@@ -142,8 +142,6 @@ public class ExtractionTaskTest {
 
         // Start session
         task.handleButtonPress(player, region);
-
-        // Simulate time passing (force the session to finish immediately)
         ExtractionTask.ExtractionSession session = task.getSessions().get(player.getUniqueId());
         try {
             java.lang.reflect.Field field = ExtractionTask.ExtractionSession.class.getDeclaredField("startTime");
@@ -255,8 +253,6 @@ public class ExtractionTaskTest {
         mockedBukkit.when(Bukkit::getConsoleSender).thenReturn(consoleMock);
         
         task.handleButtonPress(player, region);
-        
-        // Simulate time passing to finish the extraction
         ExtractionTask.ExtractionSession session = task.getSessions().get(player.getUniqueId());
         try {
             java.lang.reflect.Field field = ExtractionTask.ExtractionSession.class.getDeclaredField("startTime");

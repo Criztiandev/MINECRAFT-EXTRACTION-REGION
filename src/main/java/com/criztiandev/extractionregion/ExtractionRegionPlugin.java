@@ -43,10 +43,10 @@ public class ExtractionRegionPlugin extends JavaPlugin {
         this.regionManager = new RegionManager(this);
         this.regionManager.loadAll();
 
-        // Register PlaceholderAPI expansion if present
-        if (getServer().getPluginManager().getPlugin("PlaceholderAPI") != null) {
-            new com.criztiandev.extractionregion.papi.ExtractionRegionPlaceholderExpansion(this).register();
-        }
+        // Register PlaceholderAPI expansion if present (Temporarily Disabled due to Maven Outages)
+        // if (getServer().getPluginManager().getPlugin("PlaceholderAPI") != null) {
+        //     new com.criztiandev.extractionregion.papi.ExtractionRegionPlaceholderExpansion(this).register();
+        // }
 
         // Inject Region Timer Override into ExtractionChest
         this.extractionChestApi.setRegionTimerCallback(chest -> {

@@ -9,15 +9,24 @@ public class RegionTickManager extends BukkitRunnable {
 
     private final ExtractionRegionPlugin plugin;
 
-    private final ZoneId phZoneId = ZoneId.of("Asia/Manila");
+    private final ZoneId configuredZone;
 
     public RegionTickManager(ExtractionRegionPlugin plugin) {
         this.plugin = plugin;
+        String tzStr = plugin.getConfig().getString("region.timezone", "Asia/Manila");
+        ZoneId zone;
+        try {
+            zone = ZoneId.of(tzStr);
+        } catch (Exception e) {
+            plugin.getLogger().warning("[RegionEditor] Invalid timezone '" + tzStr + "' in config.yml — falling back to Asia/Manila.");
+            zone = ZoneId.of("Asia/Manila");
+        }
+        this.configuredZone = zone;
     }
 
     @Override
     public void run() {
-        java.time.ZonedDateTime manilaTime = java.time.ZonedDateTime.now(phZoneId);
+        java.time.ZonedDateTime manilaTime = java.time.ZonedDateTime.now(configuredZone);
         int currentHour = manilaTime.getHour();
         int currentMinute = manilaTime.getMinute();
 

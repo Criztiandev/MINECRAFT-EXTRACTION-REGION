@@ -24,8 +24,7 @@ import java.util.UUID;
 public class ExtractionTask extends BukkitRunnable {
 
     private final ExtractionRegionPlugin plugin;
-    // Map of PlayerUUID to the time they started extracting (in milliseconds)
-    private final Map<UUID, ExtractionSession> sessions = new HashMap<>();
+    private final Map<UUID, ExtractionSession> sessions = new java.util.concurrent.ConcurrentHashMap<>();
 
     public Map<UUID, ExtractionSession> getSessions() {
         return sessions;
@@ -39,7 +38,6 @@ public class ExtractionTask extends BukkitRunnable {
     public void run() {
         long now = System.currentTimeMillis();
 
-        // Use a safe iterator since we might remove from sessions
         java.util.Iterator<Map.Entry<UUID, ExtractionSession>> it = sessions.entrySet().iterator();
         while (it.hasNext()) {
             Map.Entry<UUID, ExtractionSession> entry = it.next();
@@ -53,17 +51,23 @@ public class ExtractionTask extends BukkitRunnable {
 
             boolean bypassCooldown = session.region.isBypassCooldown();
 
-            // Cancel if area is on cooldown
             if (session.region.isOnCooldown() && !bypassCooldown) {
                 sendActionBar(player, "§cExtraction point is on cooldown!");
                 it.remove();
                 continue;
             }
 
-            // Check if player is still looking at the conduit (within 5 blocks)
-            org.bukkit.block.Block targetBlock = player.getTargetBlockExact(5);
-            boolean lookingAtConduit = targetBlock != null && 
-                                     targetBlock.getLocation().distanceSquared(session.region.getConduitLocation()) <= 2.0;
+            Location conduitLoc = session.region.getConduitLocation();
+            boolean lookingAtConduit = false;
+            if (conduitLoc != null) {
+                org.bukkit.util.Vector toConduit = conduitLoc.clone().add(0.5, 0.5, 0.5)
+                        .subtract(player.getEyeLocation()).toVector();
+                if (toConduit.lengthSquared() > 0) {
+                    toConduit.normalize();
+                    // Accept if player faces within ~20° of the conduit center
+                    lookingAtConduit = player.getEyeLocation().getDirection().dot(toConduit) >= 0.94;
+                }
+            }
 
             if (!lookingAtConduit) {
                 String msg = plugin.getConfig().getString("extraction.messages.cancelled_look", "&cExtraction cancelled: Looked away from conduit!");
@@ -112,43 +116,38 @@ public class ExtractionTask extends BukkitRunnable {
                 // Heartbeat sound & particles
                 player.playSound(player.getLocation(), org.bukkit.Sound.BLOCK_NOTE_BLOCK_BASS, 1f, 1f + (elapsed / (float) requiredTime));
                 
-                // Beacon Beam effect above the conduit
-                Location conduitLoc = session.region.getConduitLocation();
-                if (conduitLoc != null) {
+                // Beacon Beam — use the cached DustOptions baked into the session at creation time.
+                // Do NOT decode the hex or allocate a new DustOptions here: this runs every 5 ticks
+                // per active session and used to allocate ~4 objects per call.
+                org.bukkit.Particle.DustOptions dust = session.getDustOptions();
+                if (conduitLoc == null) conduitLoc = session.region.getConduitLocation();
+                    if (conduitLoc != null) {
                     org.bukkit.World world = conduitLoc.getWorld();
                     Location center = conduitLoc.clone().add(0.5, 1.0, 0.5);
-                    
-                    String hexColor = session.region.getBeamColor();
-                    java.awt.Color awtColor = java.awt.Color.RED;
-                    // Cache decoding instead of doing it hundreds of times!
-                    try {
-                        if (hexColor != null && !hexColor.isEmpty()) {
-                            if (hexColor.startsWith("#")) {
-                                awtColor = java.awt.Color.decode(hexColor);
-                            } else {
-                                awtColor = (java.awt.Color) java.awt.Color.class.getField(hexColor.toUpperCase()).get(null);
+
+                    // Cap beam at 60 blocks above conduit to avoid iterating to sky limit.
+                    // Also restrict particle recipients to players within 48 blocks so we
+                    // don't send ~100 particle packets to all 80 players on the server.
+                    double renderHeight = Math.min(60.0, world.getMaxHeight() - center.getY());
+                    for (double y = 0; y < renderHeight; y += 8.0) {
+                        Location beamPoint = center.clone().add(0, y, 0);
+                        for (Player nearby : world.getPlayers()) {
+                            if (nearby.getLocation().distanceSquared(beamPoint) <= 2304) { // 48^2
+                                try {
+                                    nearby.spawnParticle(org.bukkit.Particle.DUST, beamPoint, 2, 0.2, 1.0, 0.2, 0.0, dust);
+                                } catch (Exception ignored) {}
+                                if (y % 16.0 < 8.0) {
+                                    nearby.spawnParticle(org.bukkit.Particle.WITCH, beamPoint, 1, 0.2, 1.0, 0.2, 0.0);
+                                }
                             }
                         }
-                    } catch (Exception ignored) {}
-                    
-                    org.bukkit.Color color = org.bukkit.Color.fromRGB(awtColor.getRed(), awtColor.getGreen(), awtColor.getBlue());
-                    org.bukkit.Particle.DustOptions dust = new org.bukkit.Particle.DustOptions(color, 2.0f);
-                    
-                    double maxOffset = world.getMaxHeight() - center.getY();
-                    for (double y = 0; y < maxOffset; y += 5.0) { // Reduced density from 2.0 to 5.0
-                        try {
-                            world.spawnParticle(org.bukkit.Particle.DUST, center.clone().add(0, y, 0), 3, 0.2, 1.0, 0.2, 0.0, dust);
-                        } catch (Exception ignored) {}
-                        
-                        if (y % 10.0 < 5.0) { // Reduced from 4.0 to 10.0
-                            world.spawnParticle(org.bukkit.Particle.WITCH, center.clone().add(0, y, 0), 1, 0.2, 1.0, 0.2, 0.0);
-                        }
                     }
+
                     // Ring effect around player
                     double angle = (elapsed / 200.0) % (2 * Math.PI);
                     world.spawnParticle(org.bukkit.Particle.FLAME, player.getLocation().add(Math.cos(angle), 1.0, Math.sin(angle)), 0, 0, 0, 0, 0);
                     world.spawnParticle(org.bukkit.Particle.FLAME, player.getLocation().add(Math.cos(angle + Math.PI), 1.0, Math.sin(angle + Math.PI)), 0, 0, 0, 0, 0);
-                    
+
                     // CMI-style Enchantment sequence
                     world.spawnParticle(org.bukkit.Particle.ENCHANT, player.getLocation().add(0, 1.0, 0), 10, 0.5, 1.0, 0.5, 0.1);
                 }
@@ -227,7 +226,12 @@ public class ExtractionTask extends BukkitRunnable {
                                           .replace("%z%", String.valueOf(cLoc.getBlockZ()))
                                           .replace("&", "§");
 
-        for (Player p : Bukkit.getOnlinePlayers()) {
+        // Announce to players in the same world only — iterating Bukkit.getOnlinePlayers()
+        // checks every player on the server across all worlds. Using World#getPlayers is
+        // O(players_in_world) instead of O(all_players) which matters at 80 players.
+        org.bukkit.World regionWorld = cLoc.getWorld();
+        if (regionWorld == null) return;
+        for (Player p : regionWorld.getPlayers()) {
             boolean inRegion = isInRegion(p.getLocation(), region);
             boolean inRadius = isInRadius(p.getLocation(), cLoc, radius);
 
@@ -243,7 +247,7 @@ public class ExtractionTask extends BukkitRunnable {
             }
         }
     }
-    
+
     private boolean isInRadius(Location loc1, Location loc2, int radius) {
         if (!loc1.getWorld().getName().equals(loc2.getWorld().getName())) return false;
         if (radius <= 0) return true; // 0 or negative = infinite
@@ -258,7 +262,6 @@ public class ExtractionTask extends BukkitRunnable {
                z >= region.getMinZ() && z <= region.getMaxZ();
     }
     private void executeExtraction(Player activator, SavedRegion region, boolean isBypassed) {
-        // Find configured spawn fallback (only if not using commands)
         Location spawn = plugin.getConfig().getLocation("extraction.spawn");
         boolean invalidWorldAlert = false;
         
@@ -302,84 +305,107 @@ public class ExtractionTask extends BukkitRunnable {
         // Spawn Fireworks
         spawnFireworks(region.getConduitLocation());
 
-        int extractedCount = 0;
-        String successMsg = plugin.getConfig().getString("extraction.messages.success", "&aExtraction successful!");
-        // Teleport or Execute commands for everyone inside the extraction zone
-        for (Player p : Bukkit.getOnlinePlayers()) {
-            if (isInRegion(p.getLocation(), region)) {
-                if (region.isExtractionUseCommand()) {
-                    String cmd = region.getExtractionCommand().replace("%player%", p.getName()).trim();
-                    boolean runAsConsole = cmd.toUpperCase().startsWith("[CONSOLE]");
-                    
-                    if (runAsConsole) cmd = cmd.substring(9).trim();
-                    if (cmd.startsWith("/")) cmd = cmd.substring(1);
-                    
-                    // Always dispatch as Console to avoid requiring OP permissions!
-                    Bukkit.dispatchCommand(Bukkit.getConsoleSender(), cmd);
-                } else {
-                    p.teleport(spawn);
-                }
-                
-                p.sendMessage(successMsg.replace("&", "§"));
-                
-                // Send Success Title
-                String title = plugin.getConfig().getString("extraction.messages.success_title.title", "&a&lEXTRACTED!");
-                String subTitle = plugin.getConfig().getString("extraction.messages.success_title.subtitle", "&7You have been successfully extracted.");
-                int fadeIn = plugin.getConfig().getInt("extraction.messages.success_title.fade_in", 10);
-                int stay = plugin.getConfig().getInt("extraction.messages.success_title.stay", 70);
-                int fadeOut = plugin.getConfig().getInt("extraction.messages.success_title.fade_out", 20);
-                
-                p.sendTitle(title.replace("&", "§"), subTitle.replace("&", "§"), fadeIn, stay, fadeOut);
-                
-                p.playSound(p.getLocation(), Sound.ENTITY_ENDERMAN_TELEPORT, 1f, 1f);
-                extractedCount++;
-                
-                // Clear their session if they had one just in case
-                sessions.remove(p.getUniqueId());
+        int cap = region.getCurrentCapacity();
+        boolean capEnforced = cap > 0;
+
+        org.bukkit.World regionWorld = activator.getWorld();
+        java.util.List<Player> inRegion = new java.util.ArrayList<>();
+        // Always put the activator first so they are guaranteed a slot.
+        if (isInRegion(activator.getLocation(), region)) inRegion.add(activator);
+        for (Player p : regionWorld.getPlayers()) {
+            if (!p.getUniqueId().equals(activator.getUniqueId()) && isInRegion(p.getLocation(), region)) {
+                inRegion.add(p);
             }
         }
 
+        // Slice down to cap; players beyond the limit stay in the zone.
+        java.util.List<Player> toExtract = capEnforced && inRegion.size() > cap
+                ? inRegion.subList(0, cap)
+                : inRegion;
+        java.util.List<Player> leftBehind = capEnforced && inRegion.size() > cap
+                ? inRegion.subList(cap, inRegion.size())
+                : java.util.Collections.emptyList();
+
+        String successMsg = plugin.getConfig().getString("extraction.messages.success", "&aExtraction successful!").replace("&", "§");
+        String title = plugin.getConfig().getString("extraction.messages.success_title.title", "&a&lEXTRACTED!").replace("&", "§");
+        String subTitle = plugin.getConfig().getString("extraction.messages.success_title.subtitle", "&7You have been successfully extracted.").replace("&", "§");
+        int fadeIn = plugin.getConfig().getInt("extraction.messages.success_title.fade_in", 10);
+        int stay   = plugin.getConfig().getInt("extraction.messages.success_title.stay", 70);
+        int fadeOut = plugin.getConfig().getInt("extraction.messages.success_title.fade_out", 20);
+
+        for (Player p : toExtract) {
+            if (region.isExtractionUseCommand()) {
+                String cmd = region.getExtractionCommand().replace("%player%", p.getName()).trim();
+                boolean runAsConsole = cmd.toUpperCase().startsWith("[CONSOLE]");
+                if (runAsConsole) cmd = cmd.substring(9).trim();
+                if (cmd.startsWith("/")) cmd = cmd.substring(1);
+                Bukkit.dispatchCommand(Bukkit.getConsoleSender(), cmd);
+            } else {
+                p.teleport(spawn);
+            }
+            p.sendMessage(successMsg);
+            p.sendTitle(title, subTitle, fadeIn, stay, fadeOut);
+            p.playSound(p.getLocation(), Sound.ENTITY_ENDERMAN_TELEPORT, 1f, 1f);
+            sessions.remove(p.getUniqueId());
+        }
+
+        // Notify players who did NOT make the cap that the zone is full.
+        String fullMsg = plugin.getConfig().getString("extraction.messages.capacity_full",
+                "&cExtraction zone is full! &7(%cap% player cap reached)").replace("&", "§")
+                .replace("%cap%", String.valueOf(cap));
+        for (Player p : leftBehind) {
+            sendActionBar(p, fullMsg);
+        }
+
         if (!isBypassed) {
-            applyCapacityAndCooldown(region, false);
+            applyCapacityAndCooldown(region, false, toExtract.size());
         }
     }
 
-    private void applyCapacityAndCooldown(SavedRegion region, boolean isMimic) {
-        // Capacity logic
+    private void applyCapacityAndCooldown(SavedRegion region, boolean isMimic, int extractedCount) {
+        // Capacity counts down by the number of players extracted this event (not by 1).
+        // When it hits 0 or below, the region departs and resets for the next cycle.
         int currentCap = region.getCurrentCapacity();
-        currentCap--;
-        
+        if (currentCap > 0) {
+            currentCap -= extractedCount;
+        }
+
         // Cooldown triggers immediately on EVERY extraction
-        int nextCooldownSeconds = region.getAndCycleNextCooldownMinutes(); // The backend stores this in seconds now
+        int nextCooldownSeconds = region.getAndCycleNextCooldownMinutes();
         region.setCooldownEndTime(System.currentTimeMillis() + ((long) nextCooldownSeconds * 1000L));
-        
+
         if (currentCap <= 0 || isMimic) {
             region.setCurrentCapacity(-1); // Resets capacity roll for when it comes off cooldown
             if (!isMimic) {
-                String departedMsg = plugin.getConfig().getString("extraction.messages.departed", "&8[&c!&8] &cExtraction point &b%region% &chas departed!");
+                String departedMsg = plugin.getConfig().getString("extraction.messages.departed",
+                        "&8[&c!&8] &cExtraction point &b%region% &chas departed!");
                 Bukkit.broadcastMessage(departedMsg.replace("%region%", region.getId()).replace("&", "§"));
             }
         } else {
             region.setCurrentCapacity(currentCap);
         }
-        
+
         plugin.getRegionManager().saveRegion(region); // persist
-        
+
         if (!isMimic) {
-            // Announce extraction success to radius
+            // Announce extraction success to radius — world-local for performance.
             int radius = region.getAnnouncementRadius();
-            String endChat = plugin.getConfig().getString("extraction.announcement.end_chat", "&eExtraction &b%region% &efinished! &7(Cap: &b%capacity%&7, Cooldown: &b%cooldown%&7)");
+            String endChat = plugin.getConfig().getString("extraction.announcement.end_chat",
+                    "&eExtraction &b%region% &efinished! &7(Cap: &b%capacity%&7, Cooldown: &b%cooldown%&7)");
             String formattedCooldown = com.criztiandev.extractionregion.utils.TimeUtil.formatDuration(nextCooldownSeconds * 1000L);
-            String parsedEndChat = endChat.replace("%region%", region.getId())
-                                          .replace("%capacity%", String.valueOf(currentCap <= 0 ? 0 : currentCap))
-                                          .replace("%cooldown%m", formattedCooldown) // Fallback for old configs that had 'm' hardcoded
-                                          .replace("%cooldown%", formattedCooldown)
-                                          .replace("&", "§");
+            String parsedEndChat = endChat
+                    .replace("%region%", region.getId())
+                    .replace("%capacity%", String.valueOf(Math.max(0, currentCap)))
+                    .replace("%cooldown%m", formattedCooldown)
+                    .replace("%cooldown%", formattedCooldown)
+                    .replace("&", "§");
 
             Location cLoc = region.getConduitLocation();
-            for (Player p : Bukkit.getOnlinePlayers()) {
-                if (isInRadius(p.getLocation(), cLoc, radius) && !isInRegion(p.getLocation(), region)) {
-                    p.sendMessage(parsedEndChat);
+            if (cLoc != null && cLoc.getWorld() != null) {
+                for (Player p : cLoc.getWorld().getPlayers()) {
+                    if (isInRadius(p.getLocation(), cLoc, radius) && !isInRegion(p.getLocation(), region)) {
+                        p.sendMessage(parsedEndChat);
+                    }
                 }
             }
         }
@@ -391,7 +417,7 @@ public class ExtractionTask extends BukkitRunnable {
         Bukkit.broadcastMessage(trapMsg.replace("%region%", region.getId()).replace("&", "§"));
 
         // Apply capacity and cooldown immediately so players can't spam it while it ticks
-        applyCapacityAndCooldown(region, true);
+        applyCapacityAndCooldown(region, true, 0);
 
         // Ticking Time Bomb Effect (2 seconds = 40 ticks)
         new BukkitRunnable() {
@@ -529,6 +555,7 @@ public class ExtractionTask extends BukkitRunnable {
         private final Location startLoc;
         private final SavedRegion region;
         private final int targetDurationSeconds;
+        private final org.bukkit.Particle.DustOptions dustOptions;
         private int lastAlarmSecond = -1;
 
         public ExtractionSession(long startTime, Location startLoc, SavedRegion region) {
@@ -536,12 +563,30 @@ public class ExtractionTask extends BukkitRunnable {
             this.startLoc = startLoc;
             this.region = region;
             this.targetDurationSeconds = region.getRandomDurationSeconds();
+            this.dustOptions = buildDustOptions(region.getBeamColor());
+        }
+
+        /** Builds a DustOptions once per session from the region beam color hex string. */
+        private static org.bukkit.Particle.DustOptions buildDustOptions(String hexColor) {
+            java.awt.Color awtColor = java.awt.Color.RED;
+            try {
+                if (hexColor != null && !hexColor.isEmpty()) {
+                    if (hexColor.startsWith("#")) {
+                        awtColor = java.awt.Color.decode(hexColor);
+                    } else {
+                        awtColor = (java.awt.Color) java.awt.Color.class.getField(hexColor.toUpperCase()).get(null);
+                    }
+                }
+            } catch (Exception ignored) {}
+            org.bukkit.Color color = org.bukkit.Color.fromRGB(awtColor.getRed(), awtColor.getGreen(), awtColor.getBlue());
+            return new org.bukkit.Particle.DustOptions(color, 2.0f);
         }
 
         public long getStartTime() { return startTime; }
         public Location getStartLoc() { return startLoc; }
         public SavedRegion getRegion() { return region; }
         public int getTargetDurationSeconds() { return targetDurationSeconds; }
+        public org.bukkit.Particle.DustOptions getDustOptions() { return dustOptions; }
         public int getLastAlarmSecond() { return lastAlarmSecond; }
         public void setLastAlarmSecond(int second) { this.lastAlarmSecond = second; }
     }

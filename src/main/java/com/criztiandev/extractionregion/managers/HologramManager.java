@@ -84,6 +84,24 @@ public class HologramManager {
         String title = "§e§l" + region.getId().toUpperCase();
         String capacity = "§7Capacity: §f" + region.getCurrentCapacity() + " Players";
         
+        // --- Plague Event Hook ---
+        org.bukkit.plugin.Plugin extEventPlugin = plugin.getServer().getPluginManager().getPlugin("ExtractionEvent");
+        if (extEventPlugin != null && extEventPlugin.isEnabled()) {
+            try {
+                Object plagueEventManager = extEventPlugin.getClass().getMethod("getPlagueEventManager").invoke(extEventPlugin);
+                if (plagueEventManager != null) {
+                    Object plagueData = plagueEventManager.getClass().getMethod("getPlagueInRegion", String.class).invoke(plagueEventManager, region.getId());
+                    if (plagueData != null) {
+                        return Arrays.asList(
+                            title,
+                            "§4§l[QUARANTINE]",
+                            "§cKill the Plague Carrier!"
+                        );
+                    }
+                }
+            } catch (Exception ignored) {}
+        }
+        
         if (region.isLockedDown()) {
             return Arrays.asList(
                 title,
@@ -178,6 +196,9 @@ public class HologramManager {
                     } else if (entity instanceof TextDisplay) {
                         // Also remove any rogue text displays near the conduit just in case
                         if (entity.getPersistentDataContainer().has(key, org.bukkit.persistence.PersistentDataType.BYTE)) {
+                            entity.remove();
+                        } else if (entity.getLocation().distanceSquared(loc) <= 25.0) {
+                            // Eradicate un-keyed ghost holograms exactly above the conduit
                             entity.remove();
                         }
                     }

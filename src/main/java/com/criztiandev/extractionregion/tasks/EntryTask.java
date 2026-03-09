@@ -52,9 +52,15 @@ public class EntryTask implements Runnable {
                         }
                     }
                     
-                    // Check if player is on cooldown
                     long now = System.currentTimeMillis();
                     String uuidStr = player.getUniqueId().toString();
+                    {
+                        java.util.Iterator<java.util.Map.Entry<String, Long>> pruneIt =
+                                region.getPlayerEntryCooldowns().entrySet().iterator();
+                        while (pruneIt.hasNext()) {
+                            if (pruneIt.next().getValue() < now) pruneIt.remove();
+                        }
+                    }
                     if (region.getPlayerEntryCooldowns().containsKey(uuidStr)) {
                         long expire = region.getPlayerEntryCooldowns().get(uuidStr);
                         if (now < expire) {
@@ -85,7 +91,10 @@ public class EntryTask implements Runnable {
                         long cooldownMs = region.getEntryCooldownSeconds() * 1000L;
                         if (cooldownMs > 0) {
                             region.getPlayerEntryCooldowns().put(uuidStr, now + cooldownMs);
-                            plugin.getRegionManager().saveRegion(region);
+                            // Save async: on a full 80-player entry burst this would otherwise
+                            // queue 80 blocking SQLite writes on the main thread in one tick.
+                            final SavedRegion regionRef = region;
+                            plugin.getRegionManager().saveRegionAsync(regionRef);
                         }
                         
                         // Add to Active Drop Zone tracking for Slow Falling removal

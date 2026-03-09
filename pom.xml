@@ -6,7 +6,7 @@
 
   <groupId>com.criztiandev.extractionregion</groupId>
   <artifactId>extraction-region-editor</artifactId>
-  <version>1.0.79-SNAPSHOT</version>
+  <version>1.0.84-SNAPSHOT</version>
   <packaging>jar</packaging>
   <name>ExtractionRegionEditor</name>
   <description>Region Editor addon for Extraction Chest.</description>
@@ -28,12 +28,6 @@
       <id>papermc</id>
       <url>https://repo.papermc.io/repository/maven-public/</url>
     </repository>
-    
-    <!-- PlaceholderAPI Repository -->
-    <repository>
-      <id>placeholderapi</id>
-      <url>https://repo.extendedclip.com/content/repositories/placeholderapi/</url>
-    </repository>
   </repositories>
 
   <dependencies>
@@ -53,13 +47,7 @@
       <scope>provided</scope>
     </dependency>
 
-    <!-- PlaceholderAPI -->
-    <dependency>
-      <groupId>me.clip</groupId>
-      <artifactId>placeholderapi</artifactId>
-      <version>2.11.6</version>
-      <scope>provided</scope>
-    </dependency>
+    <!-- PlaceholderAPI temporarily removed to avoid Build Deadlines -->
 
     <!-- HikariCP for DB Connections -->
     <dependency>

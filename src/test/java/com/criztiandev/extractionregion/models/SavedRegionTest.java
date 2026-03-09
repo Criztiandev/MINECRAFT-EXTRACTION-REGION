@@ -63,33 +63,33 @@ public class SavedRegionTest {
         SavedRegion region = new SavedRegion("test", "world", 0, 0, 0, 0);
         java.util.UUID playerId = java.util.UUID.randomUUID();
         
-        assertFalse(region.isOnEntryCooldown(playerId), "Should not be on cooldown initially");
-        assertEquals(0, region.getRemainingEntryCooldownTime(playerId), "Remaining time should be 0");
+        assertFalse(region.isOnEntryCooldown(playerId.toString()), "Should not be on cooldown initially");
+        assertEquals(0, region.getRemainingEntryCooldownTime(playerId.toString()), "Remaining time should be 0");
     }
 
     @Test
     public void testEntryCooldown_SetAndCheck() {
         SavedRegion region = new SavedRegion("test", "world", 0, 0, 0, 0);
-        region.setEntryCooldownMinutes(5); // 5 minutes
+        region.setEntryCooldownSeconds(300); // 5 minutes
         java.util.UUID playerId = java.util.UUID.randomUUID();
         
-        region.setPlayerEntryCooldown(playerId);
+        region.setPlayerEntryCooldown(playerId.toString());
         
-        assertTrue(region.isOnEntryCooldown(playerId), "Player should be on cooldown after it is set");
-        assertTrue(region.getRemainingEntryCooldownTime(playerId) > 0, "Remaining time should be greater than 0");
+        assertTrue(region.isOnEntryCooldown(playerId.toString()), "Player should be on cooldown after it is set");
+        assertTrue(region.getRemainingEntryCooldownTime(playerId.toString()) > 0, "Remaining time should be greater than 0");
     }
 
     @Test
     public void testEntryCooldown_MultiplayerIsolation() {
         SavedRegion region = new SavedRegion("test", "world", 0, 0, 0, 0);
-        region.setEntryCooldownMinutes(10);
+        region.setEntryCooldownSeconds(600);
         
         java.util.UUID playerA = java.util.UUID.randomUUID();
         java.util.UUID playerB = java.util.UUID.randomUUID();
         
-        region.setPlayerEntryCooldown(playerA);
+        region.setPlayerEntryCooldown(playerA.toString());
         
-        assertTrue(region.isOnEntryCooldown(playerA), "Player A should be on cooldown");
-        assertFalse(region.isOnEntryCooldown(playerB), "Player B should NOT be on cooldown");
+        assertTrue(region.isOnEntryCooldown(playerA.toString()), "Player A should be on cooldown");
+        assertFalse(region.isOnEntryCooldown(playerB.toString()), "Player B should NOT be on cooldown");
     }
 }

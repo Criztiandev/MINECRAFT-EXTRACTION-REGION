@@ -75,8 +75,8 @@ public class RegionCommand implements CommandExecutor {
                     return true;
                 }
 
-                if (region.isOnEntryCooldown(player.getUniqueId())) {
-                    long remaining = region.getRemainingEntryCooldownTime(player.getUniqueId());
+                if (region.isOnEntryCooldown(player.getUniqueId().toString())) {
+                    long remaining = region.getRemainingEntryCooldownTime(player.getUniqueId().toString());
                     player.sendMessage("§cYou are on cooldown! Please wait " + com.criztiandev.extractionregion.utils.TimeUtil.formatDuration(remaining) + " before entering again.");
                     return true;
                 }
@@ -101,7 +101,25 @@ public class RegionCommand implements CommandExecutor {
                 
                 player.teleport(targetLoc);
                 player.sendMessage("§cWelcome to the warzone, enjoy");
-                region.setPlayerEntryCooldown(player.getUniqueId());
+                region.setPlayerEntryCooldown(player.getUniqueId().toString());
+
+                // Give starter gear if player joins naked
+                boolean hasArmor = false;
+                for (org.bukkit.inventory.ItemStack armor : player.getInventory().getArmorContents()) {
+                    if (armor != null && armor.getType() != org.bukkit.Material.AIR) {
+                        hasArmor = true;
+                        break;
+                    }
+                }
+                
+                if (!hasArmor) {
+                    player.getInventory().setHelmet(new org.bukkit.inventory.ItemStack(org.bukkit.Material.LEATHER_HELMET));
+                    player.getInventory().setChestplate(new org.bukkit.inventory.ItemStack(org.bukkit.Material.LEATHER_CHESTPLATE));
+                    player.getInventory().setLeggings(new org.bukkit.inventory.ItemStack(org.bukkit.Material.LEATHER_LEGGINGS));
+                    player.getInventory().setBoots(new org.bukkit.inventory.ItemStack(org.bukkit.Material.LEATHER_BOOTS));
+                    player.getInventory().addItem(new org.bukkit.inventory.ItemStack(org.bukkit.Material.WOODEN_SWORD));
+                    player.sendMessage("§aYou were given starter gear to aid your survival.");
+                }
 
                 if (region.getSlowFallingSeconds() > 0) {
                     player.addPotionEffect(new org.bukkit.potion.PotionEffect(org.bukkit.potion.PotionEffectType.SLOW_FALLING, region.getSlowFallingSeconds() * 20, 0, false, false, true));

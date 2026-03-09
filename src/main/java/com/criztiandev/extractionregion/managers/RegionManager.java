@@ -94,6 +94,21 @@ public class RegionManager {
         
         plugin.getStorageProvider().saveRegion(region);
     }
+
+
+    public void saveRegionAsync(SavedRegion region) {
+        SavedRegion old = regions.put(region.getId().toLowerCase(), region);
+        if (old != null && !old.getWorld().equalsIgnoreCase(region.getWorld())) {
+            java.util.List<SavedRegion> oldList = regionsByWorld.get(old.getWorld().toLowerCase());
+            if (oldList != null) oldList.remove(old);
+        }
+        java.util.List<SavedRegion> worldList = regionsByWorld.computeIfAbsent(
+                region.getWorld().toLowerCase(), k -> new java.util.concurrent.CopyOnWriteArrayList<>());
+        if (!worldList.contains(region)) worldList.add(region);
+
+        // Fire-and-forget disk persist — avoids blocking the main thread.
+        CompletableFuture.runAsync(() -> plugin.getStorageProvider().saveRegion(region));
+    }
     
     public void deleteRegion(String id) {
         SavedRegion region = regions.remove(id.toLowerCase());
@@ -152,7 +167,22 @@ public class RegionManager {
         // --- STEP 1: APPLY PERSISTED OVERRIDES & CLEANUP ---
         
         for (com.criztiandev.extractionchest.models.ChestInstance inst : chestsToReplenish) {
+            // Delete the ExtractionChest hologram for this instance so it doesn't orphan.
+            // Also do a targeted world-level sweep around the chest coords to kill any rogue
+            // TextDisplay/ArmorStand holograms left over from a previous failed replenish cycle.
             plugin.getExtractionChestApi().getHologramManager().deleteHologram(inst);
+            org.bukkit.World chestWorld = org.bukkit.Bukkit.getWorld(inst.getWorld());
+            if (chestWorld != null) {
+                org.bukkit.Location chestLoc = new org.bukkit.Location(chestWorld, inst.getX() + 0.5, inst.getY(), inst.getZ() + 0.5);
+                org.bukkit.NamespacedKey chestHoloKey = new org.bukkit.NamespacedKey(plugin.getExtractionChestApi(), "extractionchest-hologram");
+                for (org.bukkit.entity.Entity e : chestWorld.getNearbyEntities(chestLoc, 1.0, 2.0, 1.0)) {
+                    if ((e instanceof org.bukkit.entity.TextDisplay || e instanceof org.bukkit.entity.ArmorStand)
+                            && e.getPersistentDataContainer().has(chestHoloKey, org.bukkit.persistence.PersistentDataType.BYTE)) {
+                        e.remove();
+                    }
+                }
+            }
+
             inst.setState(com.criztiandev.extractionchest.models.ChestState.EMPTY);
 
             String coordKey = inst.getX() + "," + inst.getY() + "," + inst.getZ();
@@ -242,6 +272,14 @@ public class RegionManager {
 
                     plugin.getExtractionChestApi().getChestInstanceManager().changeState(inst, com.criztiandev.extractionchest.models.ChestState.RESPAWNING);
                     plugin.getExtractionChestApi().getChestInstanceManager().addInstance(inst);
+
+                    // Re-attach the ExtractionChest hologram so it doesn't disappear and act like a normal chest.
+                    // This must run after changeState so the chest manager knows the new state when rendering.
+                    try {
+                        plugin.getExtractionChestApi().getHologramManager().createHologram(inst);
+                    } catch (Exception holoEx) {
+                        plugin.getLogger().warning("[RegionEditor] Failed to create hologram for chest " + inst.getId() + ": " + holoEx.getMessage());
+                    }
                         
                     java.util.concurrent.CompletableFuture.runAsync(() -> {
                         plugin.getExtractionChestApi().getStorageProvider().saveInstance(inst);
@@ -249,6 +287,11 @@ public class RegionManager {
                 }
                 if (index >= chestsToReplenish.size()) {
                     plugin.getLogger().info("[RegionEditor-DEBUG] Batch respawn fully completed.");
+                    // Final safety sweep: clean up any rogue extraction-region holograms that may
+                    // have been orphaned during the replenish cycle (e.g., from a previously crashed tick).
+                    if (plugin.getHologramManager() != null) {
+                        plugin.getHologramManager().cleanupOldHolograms();
+                    }
                     this.cancel();
                 }
             }
