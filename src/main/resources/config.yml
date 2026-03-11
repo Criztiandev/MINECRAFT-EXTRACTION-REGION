@@ -11,6 +11,26 @@ settings:
 region:
   always-show-regions: false
   replenish-batch-size: 5
+  timezone: "Asia/Manila"   # Java ZoneId — used for cron replenish timing
+  replenish-announcement:
+    enabled: true
+    # Sent to all players when a region replenishes
+    message: "&8[&a!&8] &aThe extraction region &b%region% &ahas been replenished!"
+    # Sound played on replenish (Bukkit Sound name). Leave empty for no sound.
+    sound: "ENTITY_ENDER_DRAGON_GROWL"
+    sound-volume: 1.0
+    sound-pitch: 1.5
+    # Timed warnings before replenish (minutes before). Leave empty to disable.
+    pre-announce-minutes:
+      - 10
+      - 5
+      - 1
+    # Message for pre-announce warnings. %region% and %minutes% are placeholders.
+    pre-announce-message: "&8[&e!&8] &eThe extraction region &b%region% &ewill replenish in &f%minutes% minute(s)&e!"
+    # Sound played on pre-announce warnings.
+    pre-announce-sound: "BLOCK_NOTE_BLOCK_PLING"
+    pre-announce-sound-volume: 1.0
+    pre-announce-sound-pitch: 2.0
 
 # Extraction Settings
 extraction:

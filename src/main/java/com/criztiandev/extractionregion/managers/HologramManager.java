@@ -31,6 +31,11 @@ public class HologramManager {
                 removeHologram(region.getId());
                 continue;
             }
+            
+            if (!hasNearbyPlayer(region)) {
+                removeHologram(region.getId());
+                continue;
+            }
 
             List<String> lines = getLinesForRegion(region);
             TextDisplay display = activeHolograms.get(region.getId());
@@ -149,6 +154,18 @@ public class HologramManager {
                 );
             }
         }
+    }
+
+    private boolean hasNearbyPlayer(SavedRegion region) {
+        Location cLoc = region.getConduitLocation();
+        if (cLoc == null || cLoc.getWorld() == null) return false;
+        
+        for (org.bukkit.entity.Player p : cLoc.getWorld().getPlayers()) {
+            if (p.getLocation().distanceSquared(cLoc) <= 10000) { // 100 blocks
+                return true;
+            }
+        }
+        return false;
     }
 
     private void spawnHologram(SavedRegion region, String text) {
