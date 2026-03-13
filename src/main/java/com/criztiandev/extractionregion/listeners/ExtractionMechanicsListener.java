@@ -33,8 +33,9 @@ public class ExtractionMechanicsListener implements Listener {
         for (SavedRegion region : plugin.getRegionManager().getRegions()) {
             if (region.getType() == RegionType.EXTRACTION && region.getWorld().equals(loc.getWorld().getName())) {
                 if (loc.getBlockX() >= region.getMinX() && loc.getBlockX() <= region.getMaxX() &&
+                    loc.getBlockY() >= region.getMinY() && loc.getBlockY() <= region.getMaxY() &&
                     loc.getBlockZ() >= region.getMinZ() && loc.getBlockZ() <= region.getMaxZ()) {
-                    
+
                     if (!hasBypass) {
                         event.setCancelled(true);
                         player.sendMessage("§cYou cannot break blocks in an extraction zone!");
@@ -56,8 +57,9 @@ public class ExtractionMechanicsListener implements Listener {
         for (SavedRegion region : plugin.getRegionManager().getRegions()) {
             if (region.getType() == RegionType.EXTRACTION && region.getWorld().equals(loc.getWorld().getName())) {
                 if (loc.getBlockX() >= region.getMinX() && loc.getBlockX() <= region.getMaxX() &&
+                    loc.getBlockY() >= region.getMinY() && loc.getBlockY() <= region.getMaxY() &&
                     loc.getBlockZ() >= region.getMinZ() && loc.getBlockZ() <= region.getMaxZ()) {
-                    
+
                     if (!hasBypass) {
                         event.setCancelled(true);
                         player.sendMessage("§cYou cannot place blocks in an extraction zone!");
@@ -154,17 +156,15 @@ public class ExtractionMechanicsListener implements Listener {
         
         if (block == null) return;
         
-        // Handle Conduit Selection Mode First
+        // Conduit selection mode: only cancel the interaction if inside the region
         if (plugin.getRegionManager().isConduitSelectingPlayer(player.getUniqueId())) {
-            event.setCancelled(true);
-            
             if (action == Action.LEFT_CLICK_BLOCK || action == Action.RIGHT_CLICK_BLOCK) {
                 String regionId = plugin.getRegionManager().getConduitSelectingRegionId(player.getUniqueId());
                 if (regionId == null) {
                     plugin.getRegionManager().removeConduitSelectingPlayer(player.getUniqueId());
                     return;
                 }
-                
+
                 SavedRegion region = plugin.getRegionManager().getRegion(regionId);
                 if (region == null) {
                     player.sendMessage("§cRegion not found.");
@@ -172,10 +172,13 @@ public class ExtractionMechanicsListener implements Listener {
                     return;
                 }
 
+                // Cancel the interaction regardless so the conduit-select click doesn't also place a block
+                event.setCancelled(true);
+
                 if (block.getX() >= region.getMinX() && block.getX() <= region.getMaxX() &&
                     block.getZ() >= region.getMinZ() && block.getZ() <= region.getMaxZ() &&
                     block.getWorld().getName().equals(region.getWorld())) {
-                    
+
                     region.setConduitLocation(block.getLocation());
                     plugin.getRegionManager().saveRegion(region);
                     player.sendMessage("§aConduit extraction point set successfully for region §e" + regionId + "§a!");
@@ -183,7 +186,7 @@ public class ExtractionMechanicsListener implements Listener {
                 } else {
                     player.sendMessage("§cThe conduit block must be inside the region boundaries!");
                 }
-                
+
                 plugin.getRegionManager().removeConduitSelectingPlayer(player.getUniqueId());
             }
             return;
